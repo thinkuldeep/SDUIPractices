@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Kotlin
+out/
+
+# Android
+local.properties
+
+# iOS
+DerivedData/
+
+# Logs
+*.log
