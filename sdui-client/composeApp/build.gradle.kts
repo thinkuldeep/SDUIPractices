@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -15,7 +16,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-
+    
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -25,22 +26,18 @@ kotlin {
             isStatic = true
         }
     }
-
+    
     js {
         browser()
         binaries.executable()
     }
 
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
-        browser()
-        binaries.executable()
-    }
-
+    
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.ktor.okhttp)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -51,7 +48,21 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.ktor.core)
+            implementation(libs.ktor.content)
+            implementation(libs.ktor.json)
+            implementation(libs.kamel.image)
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
         }
+
+        iosMain.dependencies {
+            implementation(libs.ktor.darwin)
+        }
+
+        jsMain.dependencies {
+            implementation(libs.ktor.js)
+        }
+
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
@@ -59,11 +70,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.thinkuldeep.sdui_client"
+    namespace = "com.thinkuldeep.sdui.client"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.thinkuldeep.sdui_client"
+        applicationId = "com.thinkuldeep.sdui.client"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

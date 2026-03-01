@@ -1,4 +1,4 @@
-rootProject.name = "sdui_client"
+rootProject.name = "client"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
