@@ -1,6 +1,5 @@
 package com.thinkuldeep.sdui.client.model
 
-import io.ktor.util.reflect.Type
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

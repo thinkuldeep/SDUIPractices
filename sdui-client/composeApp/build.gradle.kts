@@ -26,13 +26,7 @@ kotlin {
             isStatic = true
         }
     }
-    
-    js {
-        browser()
-        binaries.executable()
-    }
 
-    
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
@@ -57,10 +51,6 @@ kotlin {
 
         iosMain.dependencies {
             implementation(libs.ktor.darwin)
-        }
-
-        jsMain.dependencies {
-            implementation(libs.ktor.js)
         }
 
         commonTest.dependencies {

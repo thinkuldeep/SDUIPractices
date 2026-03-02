@@ -19,15 +19,14 @@ class LandingPageController {
 
         val subtitle = Text( value = "The world of learning, sharing, and caring",  size = "medium", weight = "medium")
 
-        val books = FeaturedItems( button=Button(id= "books", value = "Books", action = "load_next_feature"), children = listOf(
+        val books = FeaturedItems( button=Button(id= "books", value = "Books - Click for more!", action = "load_next_feature"), children = listOf(
                 Column(children = listOf(Text( value = "Jagjeevan - Living Larger Than Life",  size = "medium", weight = "bold"), Image( url = "https://thinkuldeep.com/images/Jagjeevan_book.png", width = 488, height = 503))),
                 Image(url = "https://thinkuldeep.com/images/exploring-the-metaverse-books.png", width = 465, height = 503),
-                Image(url = "https://thinkuldeep.com/images/MyThoughtworkings.jpg", width = 893, height = 503),
                 Image(url = "https://thinkuldeep.com/images/MyThoughtworkings.jpg", width = 893, height = 503),
             )
         )
 
-        val articles = FeaturedItems(button=Button(id= "articles", value = "Articles", action = "load_next_feature"), children = listOf(
+        val articles = FeaturedItems(button=Button(id= "articles", value = "Articles - Click for more!", action = "load_next_feature"), children = listOf(
             Column(children = listOf(Text( value = "Connecting Thread Devices to the Internet over CoAP",  size = "medium", weight = "bold"),
                 Text( value = "A step-by-step guide to implementing COAP server and COAP client Thread network devices",  size = "medium", weight = "medium"))),
             Column(children = listOf(Text( value = "Jagjeevan at Silver Jubilee of Millennium Batch NIT Kurukshetra",  size = "medium", weight = "bold"),
