@@ -10,4 +10,9 @@ class SduiServerApplicationTests {
 	fun contextLoads() {
 	}
 
+	@Test
+	fun `main function starts application context`() {
+		main(arrayOf("--spring.main.web-application-type=none"))
+	}
+
 }
