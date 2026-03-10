@@ -1,12 +1,2 @@
 package com.thinkuldeep.sdui.client
-
-import kotlin.test.Test
-import kotlin.test.assertEquals
-
-class ComposeAppCommonTest {
-
-    @Test
-    fun example() {
-        assertEquals(3, 1 + 2)
-    }
-}
+// placeholder removed – see model/ and viewmodel/ for tests

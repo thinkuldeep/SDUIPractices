@@ -1,14 +1,17 @@
 package com.thinkuldeep.sdui.client.viewmodel
 
+import com.thinkuldeep.sdui.client.data.UiDataSource
 import com.thinkuldeep.sdui.client.data.UiRepository
 import com.thinkuldeep.sdui.client.model.UiComponent
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-class LandingViewModel {
-    private val repository = UiRepository()
-    private val scope = CoroutineScope(Dispatchers.Default)
+class LandingViewModel(
+    private val repository: UiDataSource = UiRepository(),
+    dispatcher: CoroutineDispatcher = Dispatchers.Default
+) {
+    private val scope = CoroutineScope(dispatcher)
     private val _uiState = MutableStateFlow<UiComponent?>(null)
     val uiState: StateFlow<UiComponent?> = _uiState
 

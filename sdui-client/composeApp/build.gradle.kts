@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -55,6 +56,8 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.mock)
         }
     }
 }
@@ -88,5 +91,27 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes(
+                    "*.MainActivity",
+                    "*.MainViewController",
+                    "*.HttpClientFactory",
+                    "*PlatformConfig*",
+                    "*.UiRenderer*",
+                    "*ComposableSingletons*"
+                )
+                packages("client.composeapp.generated.resources")
+            }
+        }
+        total {
+            html { onCheck = true }
+            xml { onCheck = true }
+        }
+    }
 }
 
