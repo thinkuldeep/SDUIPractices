@@ -20,7 +20,7 @@ fun RenderWithRefresh(component: UiComponent, viewModel: LandingViewModel, onRef
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 32.dp, bottom = 16.dp)
             ) {
                 Button(
                     onClick = onRefresh,
