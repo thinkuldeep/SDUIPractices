@@ -12,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.thinkuldeep.sdui.client.renderer.Render
+import com.thinkuldeep.sdui.client.renderer.RenderWithRefresh
 import com.thinkuldeep.sdui.client.tracing.Environment
 import com.thinkuldeep.sdui.client.tracing.TraceContext
 import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
@@ -32,20 +33,12 @@ class MainActivity : ComponentActivity() {
             val state = viewModel.uiState.collectAsState()
             val traceContext = viewModel.traceContext.collectAsState()
 
-            Scaffold(
-                floatingActionButton = {
-                    Button(
-                        onClick = {
-                            refreshUI(viewModel)
-                        }
-                    ) {
-                        Text("🔄 New Trace")
-                    }
-                }
-            ) { paddingValues ->
+            Scaffold { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                     state.value?.let {
-                        Render(it, viewModel)
+                        RenderWithRefresh(it, viewModel) {
+                            refreshUI(viewModel)
+                        }
                     }
                 }
             }

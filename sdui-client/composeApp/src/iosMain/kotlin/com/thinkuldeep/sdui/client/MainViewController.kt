@@ -1,16 +1,10 @@
 package com.thinkuldeep.sdui.client
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.ui.window.ComposeUIViewController
-import com.thinkuldeep.sdui.client.renderer.Render
+import com.thinkuldeep.sdui.client.renderer.RenderWithRefresh
 import com.thinkuldeep.sdui.client.viewmodel.LandingViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
@@ -31,25 +25,10 @@ fun MainViewController() = ComposeUIViewController {
     val state = vm.uiState.collectAsState()
     val traceContext = vm.traceContext.collectAsState()
 
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .fillMaxHeight()) {
-        Button(
-            onClick = {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        state.value?.let {
+            RenderWithRefresh(it, vm) {
                 refreshUI(vm)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-        ) {
-            Text("🔄 New Trace")
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Box(modifier = Modifier.fillMaxWidth()) {
-            state.value?.let {
-                Render(it, vm)
             }
         }
     }

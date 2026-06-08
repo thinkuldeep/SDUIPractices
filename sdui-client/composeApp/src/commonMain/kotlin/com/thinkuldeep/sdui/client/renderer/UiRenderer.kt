@@ -14,6 +14,35 @@ import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
 
 @Composable
+fun RenderWithRefresh(component: UiComponent, viewModel: LandingViewModel, onRefresh: () -> Unit) {
+    when (component) {
+        is UiComponent.Column -> {
+            Column(horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Button(
+                    onClick = onRefresh,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ) {
+                    Text("🔄 New Trace")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                component.children.forEach {
+                    Render(it, viewModel)
+                }
+            }
+        }
+        else -> Render(component, viewModel)
+    }
+}
+
+@Composable
 fun Render(component: UiComponent, viewModel: LandingViewModel) {
 
     when (component) {
