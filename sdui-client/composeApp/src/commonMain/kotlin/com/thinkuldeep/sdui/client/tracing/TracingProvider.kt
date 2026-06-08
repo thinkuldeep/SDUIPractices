@@ -89,6 +89,14 @@ object TracingProvider {
         }
     }
 
+    fun addSpanToStack(span: Span) {
+        threadSafeExecute(lock) {
+            spanStack.add(span)
+            currentSpan = span
+            println("🔍 [SPAN] Started: ${span.name} (${span.spanId})")
+        }
+    }
+
     fun clear() {
         threadSafeExecute(lock) {
             currentSpan = null

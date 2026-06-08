@@ -3,6 +3,7 @@ package com.thinkuldeep.sdui.client.tracing
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.util.AttributeKey
+import com.thinkuldeep.sdui.client.PlatformConfig
 
 private val TRACE_CONTEXT_ATTRIBUTE = AttributeKey<TraceContext>("TraceContext")
 private val SPAN_ATTRIBUTE = AttributeKey<Span>("Span")
@@ -18,10 +19,15 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
         val requestUrl = request.url.toString()
         val requestMethod = request.method.value
         val spanName = "$requestMethod $requestUrl"
-        val span = TracingProvider.startSpan(
+        val span = Span.create(
+            traceId = traceContext.traceId,
+            spanId = null,
+            parentSpanId = TracingProvider.getCurrentSpan()?.spanId,
             name = spanName,
-            parentSpan = TracingProvider.getCurrentSpan()
+            traceState = traceContext.traceState,
+            traceFlags = traceContext.traceFlags  // Use trace context's sampling decision
         )
+        TracingProvider.addSpanToStack(span)
 
         // Add request attributes
         TracingProvider.addAttribute(span, "http.method", requestMethod)
