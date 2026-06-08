@@ -98,15 +98,15 @@ class JaegerSpanExporter(
     }
 
     private fun buildJaegerPayload(spans: List<Span>): String {
-        val spanJson = spans.map { span ->
+        val spansJson = spans.joinToString(",\n") { span ->
             """
             {
               "traceID": "${span.traceId}",
               "spanID": "${span.spanId}",
               "parentSpanID": "${span.parentSpanId ?: ""}",
-              "operationName": "${span.name}",
-              "startTime": ${span.startTime * 1000},
-              "duration": ${(span.duration() ?: 0) * 1000},
+              "operationName": "${span.name.replace("\"", "\\\"")}",
+              "startTime": ${span.startTime * 1_000_000},
+              "duration": ${(span.duration() ?: 0) * 1_000},
               "tags": ${buildTagsJson(span)}
             }
             """.trimIndent()
@@ -117,7 +117,9 @@ class JaegerSpanExporter(
           "data": [
             {
               "traceID": "${spans.first().traceId}",
-              "spans": [${spanJson.joinToString(",")}],
+              "spans": [
+                $spansJson
+              ],
               "processID": "p1"
             }
           ],
@@ -144,18 +146,27 @@ class JaegerSpanExporter(
 
     private fun buildTagsJson(span: Span): String {
         val tags = mutableListOf<String>()
-
         tags.add("""{"key":"span.kind","type":"string","value":"INTERNAL"}""")
         tags.add("""{"key":"device.id","type":"string","value":"${PlatformConfig.deviceId}"}""")
         tags.add("""{"key":"device.os","type":"string","value":"${PlatformConfig.deviceOs}"}""")
         tags.add("""{"key":"status","type":"string","value":"${span.status.name}"}""")
-
         span.attributes.forEach { (k, v) ->
             val safeVal = v.replace("\"", "\\\"")
             tags.add("""{"key":"$k","type":"string","value":"$safeVal"}""")
         }
-
         return "[${tags.joinToString(",")}]"
+    }
+
+    private fun buildTagsList(span: Span): List<Map<String, String>> {
+        val tags = mutableListOf<Map<String, String>>()
+        tags.add(mapOf("key" to "span.kind", "type" to "string", "value" to "INTERNAL"))
+        tags.add(mapOf("key" to "device.id", "type" to "string", "value" to PlatformConfig.deviceId))
+        tags.add(mapOf("key" to "device.os", "type" to "string", "value" to PlatformConfig.deviceOs))
+        tags.add(mapOf("key" to "status", "type" to "string", "value" to span.status.name))
+        span.attributes.forEach { (k, v) ->
+            tags.add(mapOf("key" to k, "type" to "string", "value" to v))
+        }
+        return tags
     }
 }
 
