@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
@@ -44,9 +43,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             ) { paddingValues ->
-                Box(modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)) {
+                Box(modifier = Modifier.padding(paddingValues)) {
                     state.value?.let {
                         Render(it, viewModel)
                     }
