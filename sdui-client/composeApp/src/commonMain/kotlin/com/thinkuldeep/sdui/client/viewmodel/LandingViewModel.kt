@@ -109,7 +109,8 @@ class LandingViewModel(
             endpoint = PlatformConfig.jaegerEndpoint,
             serviceName = "sdui-mobile-client"
         )
-        val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.client, scope)
+        // Use exportClient (no tracing) to avoid infinite loops from export requests
+        val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.exportClient, scope)
         TracingProvider.initialize(exporter, scope)
 
         // Initialize trace and load after sampling is configured

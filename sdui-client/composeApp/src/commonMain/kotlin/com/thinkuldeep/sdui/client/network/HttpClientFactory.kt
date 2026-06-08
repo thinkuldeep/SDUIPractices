@@ -7,6 +7,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 object HttpClientFactory {
+    // Main client with tracing for API requests
     val client = HttpClient {
         install(ContentNegotiation) {
             json(
@@ -17,5 +18,17 @@ object HttpClientFactory {
             )
         }
         install(TracingPlugin)
+    }
+
+    // Separate client for observability exports (without tracing to avoid loops)
+    val exportClient = HttpClient {
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                }
+            )
+        }
+        // No TracingPlugin to avoid infinite loop on export requests
     }
 }

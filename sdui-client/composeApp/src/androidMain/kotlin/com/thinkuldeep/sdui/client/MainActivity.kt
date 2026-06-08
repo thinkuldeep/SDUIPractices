@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
             // Create ViewModel inside setContent for proper lifecycle management
             val viewModel = remember {
                 LandingViewModel().apply {
-                    configureSampling(Environment.STAGING)
+                    configureSampling(Environment.DEVELOPMENT)
                 }
             }
 

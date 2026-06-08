@@ -26,7 +26,7 @@ data class JaegerExporterConfig(
 
 class JaegerSpanExporter(
     private val config: JaegerExporterConfig,
-    private val httpClient: HttpClient,
+    private val httpClient: HttpClient,  // Use exportClient (without tracing) to avoid infinite loops
     private val scope: CoroutineScope
 ) : SpanExporter {
 

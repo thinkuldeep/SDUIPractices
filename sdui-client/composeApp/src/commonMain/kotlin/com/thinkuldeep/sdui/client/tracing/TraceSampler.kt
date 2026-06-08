@@ -10,7 +10,7 @@ enum class Environment {
 }
 
 data class SamplingConfig(
-    val environment: Environment = Environment.DEVELOPMENT,
+    val environment: Environment = Environment.QA,
     val isQaUser: Boolean = false
 ) {
     fun shouldSample(): Boolean = when {
