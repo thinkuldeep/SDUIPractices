@@ -35,6 +35,7 @@ class LandingViewModel(
 
     init {
         println("🔥 ViewModel INIT")
+        load()
     }
 
     private fun load() {

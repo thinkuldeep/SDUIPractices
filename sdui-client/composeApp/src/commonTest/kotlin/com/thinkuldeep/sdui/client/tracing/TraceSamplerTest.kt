@@ -104,8 +104,8 @@ class TraceSamplerTest {
         TraceSamplerHolder.setConfig(SamplingConfig()) // Reset to default
         val config = TraceSamplerHolder.getConfig()
 
-        assertEquals(Environment.DEVELOPMENT, config.environment)
+        assertEquals(Environment.QA, config.environment) // Default is QA
         assertFalse(config.isQaUser)
-        assertTrue(TraceSamplerHolder.shouldSample()) // Development always samples
+        assertTrue(TraceSamplerHolder.shouldSample()) // QA environment always samples
     }
 }

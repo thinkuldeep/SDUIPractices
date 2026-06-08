@@ -20,16 +20,15 @@ object TracingProvider {
         }
     }
 
-    fun startSpan(name: String, parentSpan: Span? = null): Span {
+    fun startSpan(name: String, traceContext: TraceContext): Span {
         return threadSafeExecute(lock) {
-            val parent = parentSpan ?: currentSpan
             val span = Span.create(
-                traceId = parent?.traceId,
+                traceId = traceContext.traceId,
                 spanId = null,
-                parentSpanId = parent?.spanId,
+                parentSpanId = currentSpan?.spanId,
                 name = name,
-                traceState = parent?.traceState ?: "",
-                traceFlags = parent?.traceFlags  // Inherit sampling decision from parent
+                traceState = traceContext.traceState ?: "",
+                traceFlags = traceContext.traceFlags
             )
             spanStack.add(span)
             currentSpan = span
@@ -66,57 +65,11 @@ object TracingProvider {
         }
     }
 
-    fun getCurrentSpan(): Span? = threadSafeExecute(lock) {
-        currentSpan
-    }
-
     fun addAttribute(span: Span, key: String, value: String) {
         threadSafeExecute(lock) {
             val attributes = span.attributes.toMutableMap()
             attributes[key] = value
             span.attributes = attributes
         }
-    }
-
-    fun injectHeaders(span: Span? = getCurrentSpan()): Map<String, String> {
-        return threadSafeExecute(lock) {
-            span?.let {
-                mapOf(
-                    "traceparent" to it.toTraceparent(),
-                    "tracestate" to it.toTracestate()
-                )
-            } ?: emptyMap()
-        }
-    }
-
-    fun addSpanToStack(span: Span) {
-        threadSafeExecute(lock) {
-            spanStack.add(span)
-            currentSpan = span
-            println("🔍 [SPAN] Started: ${span.name} (${span.spanId})")
-        }
-    }
-
-    fun clear() {
-        threadSafeExecute(lock) {
-            currentSpan = null
-            spanStack.clear()
-            println("🔍 [SPAN] Cleared all spans")
-        }
-    }
-}
-
-suspend inline fun <T> traceBlock(
-    name: String,
-    block: suspend (span: Span) -> T
-): T {
-    val span = TracingProvider.startSpan(name)
-    return try {
-        block(span).also {
-            TracingProvider.endSpan(span, SpanStatus.OK)
-        }
-    } catch (e: Exception) {
-        TracingProvider.endSpan(span, SpanStatus.ERROR)
-        throw e
     }
 }

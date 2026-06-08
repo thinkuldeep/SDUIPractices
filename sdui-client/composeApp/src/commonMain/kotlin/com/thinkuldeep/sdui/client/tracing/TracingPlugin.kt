@@ -12,11 +12,6 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
     onRequest { request, _ ->
         val requestUrl = request.url.toString()
 
-        // Skip tracing for image requests (avoid timeouts)
-        if (isImageUrl(requestUrl)) {
-            return@onRequest
-        }
-
         val currentContext = TraceContextHolder.current()
         val traceContext = currentContext ?: TraceContext.create()
 
@@ -25,16 +20,8 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
         // Create a span for this HTTP request
         val requestMethod = request.method.value
         val spanName = "$requestMethod $requestUrl"
-        val span = Span.create(
-            traceId = traceContext.traceId,
-            spanId = null,
-            parentSpanId = TracingProvider.getCurrentSpan()?.spanId,
-            name = spanName,
-            traceState = traceContext.traceState,
-            traceFlags = traceContext.traceFlags  // Use trace context's sampling decision
-        )
-        TracingProvider.addSpanToStack(span)
 
+        val span = TracingProvider.startSpan(spanName, traceContext)
         // Add request attributes
         TracingProvider.addAttribute(span, "http.method", requestMethod)
         TracingProvider.addAttribute(span, "http.url", requestUrl)
@@ -59,26 +46,4 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
             println("🔍 [HTTP] Response: ${response.status.value}")
         }
     }
-}
-
-private fun isImageUrl(url: String): Boolean {
-    val imageExtensions = listOf(".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp")
-    val lowerUrl = url.lowercase()
-    return imageExtensions.any { lowerUrl.contains(it) }
-}
-
-fun HttpRequestBuilder.setTraceContext(context: TraceContext) {
-    headers["traceparent"] = context.toTraceparent()
-    if (context.traceState.isNotEmpty()) {
-        headers["tracestate"] = context.traceState
-    }
-    attributes.put(TRACE_CONTEXT_ATTRIBUTE, context)
-}
-
-fun HttpRequestBuilder.getTraceContext(): TraceContext? {
-    return attributes.getOrNull(TRACE_CONTEXT_ATTRIBUTE)
-}
-
-fun HttpRequestBuilder.getSpan(): Span? {
-    return attributes.getOrNull(SPAN_ATTRIBUTE)
 }
