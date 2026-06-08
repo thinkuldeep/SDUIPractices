@@ -1,11 +1,24 @@
 package com.thinkuldeep.sdui.client.tracing
 
 import com.thinkuldeep.sdui.client.threading.threadSafeExecute
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 object TracingProvider {
     private val lock = Any()
     private var currentSpan: Span? = null
     private val spanStack = mutableListOf<Span>()
+    private val completedSpans = mutableListOf<Span>()
+    private var exporter: SpanExporter? = null
+    private var scope: CoroutineScope? = null
+
+    fun initialize(exporter: SpanExporter, scope: CoroutineScope) {
+        threadSafeExecute(lock) {
+            this.exporter = exporter
+            this.scope = scope
+            println("🔍 [TRACER] Initialized with exporter: ${exporter::class.simpleName}")
+        }
+    }
 
     fun startSpan(name: String, parentSpan: Span? = null): Span {
         return threadSafeExecute(lock) {
@@ -29,6 +42,8 @@ object TracingProvider {
             span.endTime = currentTimeMillis()
             span.status = status
             spanStack.remove(span)
+            completedSpans.add(span)
+
             if (spanStack.isNotEmpty()) {
                 currentSpan = spanStack.last()
             } else {
@@ -36,6 +51,13 @@ object TracingProvider {
             }
             val duration = span.duration() ?: 0
             println("🔍 [SPAN] Ended: ${span.name} (${span.spanId}) - ${duration}ms - Status: $status")
+
+            // Export if exporter is available
+            scope?.let { s ->
+                s.launch {
+                    exporter?.export(listOf(span))
+                }
+            }
         }
     }
 

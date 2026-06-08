@@ -5,10 +5,14 @@ import com.thinkuldeep.sdui.client.data.UiRepository
 import com.thinkuldeep.sdui.client.model.UiComponent
 import com.thinkuldeep.sdui.client.threading.threadSafeExecute
 import com.thinkuldeep.sdui.client.tracing.Environment
+import com.thinkuldeep.sdui.client.tracing.JaegerExporterConfig
+import com.thinkuldeep.sdui.client.tracing.JaegerSpanExporter
 import com.thinkuldeep.sdui.client.tracing.SamplingConfig
 import com.thinkuldeep.sdui.client.tracing.TraceContext
 import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
 import com.thinkuldeep.sdui.client.tracing.TraceSamplerHolder
+import com.thinkuldeep.sdui.client.tracing.TracingProvider
+import com.thinkuldeep.sdui.client.network.HttpClientFactory
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,6 +102,15 @@ class LandingViewModel(
     fun configureSampling(config: SamplingConfig) {
         TraceSamplerHolder.setConfig(config)
         println("🔍 [TRACE] Sampling configured - Environment: ${config.environment}, IsQaUser: ${config.isQaUser}, SampleRate: ${getSampleRateForEnvironment(config.environment)}")
+
+        // Initialize tracing provider with Jaeger exporter
+        val jaegerConfig = JaegerExporterConfig(
+            endpoint = "http://localhost:14268/api/traces",
+            serviceName = "sdui-mobile-client"
+        )
+        val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.client, scope)
+        TracingProvider.initialize(exporter, scope)
+
         // Initialize trace and load after sampling is configured
         if (_traceContext.value == null) {
             val context = TraceContext.create()
