@@ -33,6 +33,13 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.okhttp)
+
+            // OpenTelemetry
+            implementation("io.opentelemetry:opentelemetry-api:1.32.0")
+            implementation("io.opentelemetry:opentelemetry-sdk:1.32.0")
+            implementation("io.opentelemetry:opentelemetry-exporter-jaeger-thrift:1.32.0")
+            implementation("io.opentelemetry.instrumentation:opentelemetry-okhttp-3.0:2.0.0")
+            implementation("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.32.0")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
