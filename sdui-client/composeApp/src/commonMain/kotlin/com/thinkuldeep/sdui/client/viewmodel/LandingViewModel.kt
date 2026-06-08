@@ -28,10 +28,6 @@ class LandingViewModel(
 
     init {
         println("🔥 ViewModel INIT")
-        val context = TraceContext.create()
-        TraceContextHolder.set(context)
-        _traceContext.value = context
-        load()
     }
 
     private fun load() {
@@ -98,6 +94,13 @@ class LandingViewModel(
     fun configureSampling(config: SamplingConfig) {
         TraceSamplerHolder.setConfig(config)
         println("🔍 [TRACE] Sampling configured - Environment: ${config.environment}, IsQaUser: ${config.isQaUser}, SampleRate: ${getSampleRateForEnvironment(config.environment)}")
+        // Initialize trace and load after sampling is configured
+        if (_traceContext.value == null) {
+            val context = TraceContext.create()
+            TraceContextHolder.set(context)
+            _traceContext.value = context
+            load()
+        }
     }
 
     fun configureSampling(environment: Environment, isQaUser: Boolean = false) {
