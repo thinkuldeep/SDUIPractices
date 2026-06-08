@@ -18,24 +18,25 @@ import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
 import com.thinkuldeep.sdui.client.viewmodel.LandingViewModel
 
 class MainActivity : ComponentActivity() {
-    private lateinit var viewModel: LandingViewModel
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        viewModel = LandingViewModel()
-        viewModel.configureSampling(Environment.STAGING)
-
         setContent {
-            val vm = remember { viewModel }
-            val state = vm.uiState.collectAsState()
-            val traceContext = vm.traceContext.collectAsState()
+            // Create ViewModel inside setContent for proper lifecycle management
+            val viewModel = remember {
+                LandingViewModel().apply {
+                    configureSampling(Environment.DEVELOPMENT)
+                }
+            }
+
+            val state = viewModel.uiState.collectAsState()
+            val traceContext = viewModel.traceContext.collectAsState()
 
             Scaffold(
                 floatingActionButton = {
                     Button(
                         onClick = {
-                            refreshUI(vm)
+                            refreshUI(viewModel)
                         }
                     ) {
                         Text("🔄 New Trace")
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
             ) { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                     state.value?.let {
-                        Render(it, vm)
+                        Render(it, viewModel)
                     }
                 }
             }
