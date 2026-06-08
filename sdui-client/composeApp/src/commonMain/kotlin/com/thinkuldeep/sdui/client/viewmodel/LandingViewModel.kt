@@ -3,6 +3,7 @@ package com.thinkuldeep.sdui.client.viewmodel
 import com.thinkuldeep.sdui.client.data.UiDataSource
 import com.thinkuldeep.sdui.client.data.UiRepository
 import com.thinkuldeep.sdui.client.model.UiComponent
+import com.thinkuldeep.sdui.client.threading.threadSafeExecute
 import com.thinkuldeep.sdui.client.tracing.Environment
 import com.thinkuldeep.sdui.client.tracing.SamplingConfig
 import com.thinkuldeep.sdui.client.tracing.TraceContext
@@ -24,6 +25,7 @@ class LandingViewModel(
     val traceContext: StateFlow<TraceContext?> = _traceContext
 
     private val featureIndexes = mutableMapOf<String, Int>()
+    private val featureIndexLock = Any()
     private var originalTree: UiComponent? = null
 
     init {
@@ -51,8 +53,10 @@ class LandingViewModel(
         when (action) {
             "load_next_feature" -> {
                 componentId?.let { id ->
-                    val current = featureIndexes[id] ?: 0
-                    featureIndexes[id] = current + 1
+                    threadSafeExecute(featureIndexLock) {
+                        val current = featureIndexes[id] ?: 0
+                        featureIndexes[id] = current + 1
+                    }
 
                     originalTree?.let {
                         _uiState.value = applyFeatureFilter(it)

@@ -48,16 +48,23 @@ data class TraceContext(
 }
 
 object TraceContextHolder {
+    @Volatile
     private var currentContext: TraceContext? = null
 
     fun set(context: TraceContext?) {
-        currentContext = context
+        synchronized(this) {
+            currentContext = context
+        }
     }
 
-    fun current(): TraceContext? = currentContext
+    fun current(): TraceContext? = synchronized(this) {
+        currentContext
+    }
 
     fun clear() {
-        currentContext = null
+        synchronized(this) {
+            currentContext = null
+        }
     }
 }
 
