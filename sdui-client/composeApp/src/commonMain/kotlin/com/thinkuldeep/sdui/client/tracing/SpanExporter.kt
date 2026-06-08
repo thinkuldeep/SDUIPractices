@@ -75,6 +75,9 @@ class JaegerSpanExporter(
 
         try {
             val payload = buildJaegerPayload(sampledSpans)
+            println("📤 [JAEGER] Sending payload to ${config.endpoint}")
+            println("📤 [JAEGER] Payload: ${payload.take(200)}...")
+
             httpClient.post(config.endpoint) {
                 contentType(ContentType.Application.Json)
                 setBody(payload)
@@ -82,6 +85,7 @@ class JaegerSpanExporter(
             println("✅ [JAEGER] Exported ${sampledSpans.size}/${spans.size} sampled spans")
         } catch (e: Exception) {
             println("❌ [JAEGER] Failed to export spans: ${e.message}")
+            e.printStackTrace()
             threadSafeExecute(bufferLock) {
                 spanBuffer.addAll(sampledSpans)
             }
