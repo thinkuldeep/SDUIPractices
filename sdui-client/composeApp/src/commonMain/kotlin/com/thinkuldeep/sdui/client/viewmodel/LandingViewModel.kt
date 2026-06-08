@@ -3,6 +3,8 @@ package com.thinkuldeep.sdui.client.viewmodel
 import com.thinkuldeep.sdui.client.data.UiDataSource
 import com.thinkuldeep.sdui.client.data.UiRepository
 import com.thinkuldeep.sdui.client.model.UiComponent
+import com.thinkuldeep.sdui.client.tracing.TraceContext
+import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,11 +17,17 @@ class LandingViewModel(
     private val _uiState = MutableStateFlow<UiComponent?>(null)
     val uiState: StateFlow<UiComponent?> = _uiState
 
+    private val _traceContext = MutableStateFlow<TraceContext?>(null)
+    val traceContext: StateFlow<TraceContext?> = _traceContext
+
     private val featureIndexes = mutableMapOf<String, Int>()
     private var originalTree: UiComponent? = null
 
     init {
         println("🔥 ViewModel INIT")
+        val context = TraceContext.create()
+        TraceContextHolder.set(context)
+        _traceContext.value = context
         load()
     }
 
@@ -49,6 +57,35 @@ class LandingViewModel(
                 }
             }
         }
+    }
+
+    fun setTraceContext(traceparent: String, tracestate: String = "") {
+        val context = TraceContext(
+            traceId = extractTraceId(traceparent),
+            spanId = extractSpanId(traceparent),
+            traceState = tracestate
+        )
+        TraceContextHolder.set(context)
+        _traceContext.value = context
+        println("🔍 [TRACE] Context set - TraceID: ${context.traceId}")
+    }
+
+    fun setTraceContext(context: TraceContext) {
+        TraceContextHolder.set(context)
+        _traceContext.value = context
+        println("🔍 [TRACE] Context set - TraceID: ${context.traceId}")
+    }
+
+    fun getCurrentTraceContext(): TraceContext? = _traceContext.value
+
+    private fun extractTraceId(traceparent: String): String {
+        val parts = traceparent.split("-")
+        return if (parts.size >= 2) parts[1] else ""
+    }
+
+    private fun extractSpanId(traceparent: String): String {
+        val parts = traceparent.split("-")
+        return if (parts.size >= 3) parts[2] else ""
     }
 
 
