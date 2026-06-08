@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
@@ -43,7 +44,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             ) { paddingValues ->
-                Box(modifier = Modifier.padding(paddingValues)) {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)) {
                     state.value?.let {
                         Render(it, viewModel)
                     }
@@ -52,7 +55,7 @@ class MainActivity : ComponentActivity() {
 
             // Log current trace
             traceContext.value?.let { trace ->
-                val logMsg = "🔍 [TRACE] Current - TraceID: ${trace.traceId.take(8)}..., " +
+                val logMsg = "🔍 [TRACE] Current - TraceID: ${trace.traceId}, " +
                         "Sampled: ${trace.isSampled}, " +
                         "Flags: ${trace.traceFlags}"
                 println(logMsg)

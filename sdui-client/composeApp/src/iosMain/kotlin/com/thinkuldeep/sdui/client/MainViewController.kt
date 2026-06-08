@@ -47,7 +47,9 @@ fun MainViewController() = ComposeUIViewController {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()) {
             state.value?.let {
                 Render(it, vm)
             }
