@@ -2,6 +2,8 @@ package com.thinkuldeep.sdui.client.renderer
 
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,10 +21,13 @@ fun Render(component: UiComponent, viewModel: LandingViewModel) {
     when (component) {
 
         is UiComponent.Column -> {
-            Column(horizontalAlignment = Alignment.CenterHorizontally,
+            val scrollState = rememberScrollState()
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(16.dp)
+                    .verticalScroll(scrollState)
             ) {
                 component.children.forEach {
                     Render(it, viewModel)
