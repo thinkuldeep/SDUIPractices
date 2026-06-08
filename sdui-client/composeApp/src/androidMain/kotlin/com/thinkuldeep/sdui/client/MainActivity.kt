@@ -23,8 +23,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize OpenTelemetry
-        OpenTelemetryInit.initialize(this)
+        // Initialize OpenTelemetry (currently disabled due to dependency issues)
+        // TODO: Fix OTEL initialization and re-enable
+        // OpenTelemetryInit.initialize(this)
 
         setContent {
             // Create ViewModel inside setContent for proper lifecycle management

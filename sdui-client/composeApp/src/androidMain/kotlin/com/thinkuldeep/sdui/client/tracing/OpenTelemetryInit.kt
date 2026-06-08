@@ -42,6 +42,7 @@ object OpenTelemetryInit {
             println("🔍 [OTEL] OpenTelemetry initialized for Android")
         } catch (e: Exception) {
             println("❌ [OTEL] Failed to initialize OpenTelemetry: ${e.message}")
+            e.printStackTrace()
         }
     }
 }

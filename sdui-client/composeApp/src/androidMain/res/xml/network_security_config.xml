@@ -3,6 +3,8 @@
 
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="">10.0.2.2</domain>
+        <domain includeSubdomains="">localhost</domain>
+        <domain includeSubdomains="">127.0.0.1</domain>
     </domain-config>
 
 </network-security-config>
