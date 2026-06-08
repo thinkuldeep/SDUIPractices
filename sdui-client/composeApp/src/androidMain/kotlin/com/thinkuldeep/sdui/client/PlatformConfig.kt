@@ -6,8 +6,8 @@ import java.util.UUID
 actual object PlatformConfig {
     actual val baseUrl: String = "http://10.0.2.2:8080"
 
-    // Jaeger Thrift HTTP collector endpoint
-    actual val jaegerEndpoint: String = "http://10.0.2.2:14268/api/traces"
+    // Jaeger OTLP HTTP receiver endpoint (more reliable than /api/traces)
+    actual val jaegerEndpoint: String = "http://10.0.2.2:4318/v1/traces"
 
     actual val deviceId: String = UUID.randomUUID().toString()
 

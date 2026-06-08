@@ -98,48 +98,63 @@ class JaegerSpanExporter(
     }
 
     private fun buildJaegerPayload(spans: List<Span>): String {
-        val spansJson = spans.joinToString(",\n") { span ->
+        // Build OTLP (OpenTelemetry Protocol) JSON format
+        val spansJson = spans.joinToString(",") { span ->
+            val attributes = mutableListOf<String>()
+            attributes.add("""{"key":"service.name","value":{"stringValue":"${config.serviceName}"}}""")
+            attributes.add("""{"key":"device.id","value":{"stringValue":"${PlatformConfig.deviceId}"}}""")
+            attributes.add("""{"key":"device.os","value":{"stringValue":"${PlatformConfig.deviceOs}"}}""")
+
+            span.attributes.forEach { (k, v) ->
+                attributes.add("""{"key":"$k","value":{"stringValue":"${v.replace("\"", "\\\"")}"}}}""")
+            }
+
             """
             {
-              "traceID": "${span.traceId}",
-              "spanID": "${span.spanId}",
-              "parentSpanID": "${span.parentSpanId ?: ""}",
-              "operationName": "${span.name.replace("\"", "\\\"")}",
-              "startTime": ${span.startTime * 1_000_000},
-              "duration": ${(span.duration() ?: 0) * 1_000},
-              "tags": ${buildTagsJson(span)}
+              "traceId": "${span.traceId}",
+              "spanId": "${span.spanId}",
+              "parentSpanId": "${span.parentSpanId ?: ""}",
+              "name": "${span.name.replace("\"", "\\\"")}",
+              "kind": 1,
+              "startTimeUnixNano": "${span.startTime * 1_000_000}",
+              "endTimeUnixNano": "${(span.endTime ?: span.startTime + (span.duration() ?: 0)) * 1_000_000}",
+              "attributes": [${attributes.joinToString(",")}],
+              "status": {"code": ${if (span.status == SpanStatus.ERROR) 2 else 1}}
             }
             """.trimIndent()
         }
 
         return """
         {
-          "data": [
+          "resourceSpans": [
             {
-              "traceID": "${spans.first().traceId}",
-              "spans": [
-                $spansJson
-              ],
-              "processID": "p1"
-            }
-          ],
-          "processes": {
-            "p1": {
-              "serviceName": "${config.serviceName}",
-              "tags": [
+              "resource": {
+                "attributes": [
+                  {
+                    "key": "service.name",
+                    "value": {"stringValue": "${config.serviceName}"}
+                  },
+                  {
+                    "key": "device.id",
+                    "value": {"stringValue": "${PlatformConfig.deviceId}"}
+                  },
+                  {
+                    "key": "device.os",
+                    "value": {"stringValue": "${PlatformConfig.deviceOs}"}
+                  }
+                ]
+              },
+              "scopeSpans": [
                 {
-                  "key": "device.id",
-                  "type": "string",
-                  "value": "${PlatformConfig.deviceId}"
-                },
-                {
-                  "key": "device.os",
-                  "type": "string",
-                  "value": "${PlatformConfig.deviceOs}"
+                  "scope": {
+                    "name": "sdui-mobile-client",
+                    "version": "1.0.0"
+                  },
+                  "spans": [$spansJson]
                 }
               ]
             }
-          }
+          ]
         }
         """.trimIndent()
     }
