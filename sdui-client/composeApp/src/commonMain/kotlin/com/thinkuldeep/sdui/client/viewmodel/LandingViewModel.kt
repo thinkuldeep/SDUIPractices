@@ -3,8 +3,11 @@ package com.thinkuldeep.sdui.client.viewmodel
 import com.thinkuldeep.sdui.client.data.UiDataSource
 import com.thinkuldeep.sdui.client.data.UiRepository
 import com.thinkuldeep.sdui.client.model.UiComponent
+import com.thinkuldeep.sdui.client.tracing.Environment
+import com.thinkuldeep.sdui.client.tracing.SamplingConfig
 import com.thinkuldeep.sdui.client.tracing.TraceContext
 import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
+import com.thinkuldeep.sdui.client.tracing.TraceSamplerHolder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +45,10 @@ class LandingViewModel(
                 println("❌ ViewModel error: ${e.message}")
             }
         }
+    }
+
+    fun reload() {
+        load()
     }
 
     fun dispatch(action: String, componentId: String?) {
@@ -88,6 +95,22 @@ class LandingViewModel(
         return if (parts.size >= 3) parts[2] else ""
     }
 
+    fun configureSampling(config: SamplingConfig) {
+        TraceSamplerHolder.setConfig(config)
+        println("🔍 [TRACE] Sampling configured - Environment: ${config.environment}, IsQaUser: ${config.isQaUser}, SampleRate: ${getSampleRateForEnvironment(config.environment)}")
+    }
+
+    fun configureSampling(environment: Environment, isQaUser: Boolean = false) {
+        val config = SamplingConfig(environment = environment, isQaUser = isQaUser)
+        configureSampling(config)
+    }
+
+    private fun getSampleRateForEnvironment(environment: Environment): String = when (environment) {
+        Environment.PRODUCTION -> "1%"
+        Environment.STAGING -> "20%"
+        Environment.QA -> "100%"
+        Environment.DEVELOPMENT -> "50%"
+    }
 
     private fun applyFeatureFilter(component: UiComponent): UiComponent {
         return when (component) {
