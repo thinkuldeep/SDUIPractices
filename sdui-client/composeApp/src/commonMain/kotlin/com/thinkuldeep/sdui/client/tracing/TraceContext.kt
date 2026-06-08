@@ -1,6 +1,7 @@
 package com.thinkuldeep.sdui.client.tracing
 
 import kotlinx.serialization.Serializable
+import com.thinkuldeep.sdui.client.PlatformConfig
 
 @Serializable
 data class TraceContext(
@@ -29,11 +30,16 @@ data class TraceContext(
             traceFlags: String? = null
         ): TraceContext {
             val flags = traceFlags ?: TraceSamplerHolder.getTraceFlags()
+            val finalTraceState = if (traceState.isEmpty()) {
+                "device-id=${PlatformConfig.deviceId},device-os=${PlatformConfig.deviceOs}"
+            } else {
+                traceState
+            }
             return TraceContext(
                 traceId = traceId ?: generateTraceId(),
                 spanId = spanId ?: generateSpanId(),
                 parentSpanId = parentSpanId,
-                traceState = traceState,
+                traceState = finalTraceState,
                 traceFlags = flags,
                 isSampled = flags == "01"
             )

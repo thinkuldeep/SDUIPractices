@@ -18,7 +18,7 @@ fun MainViewController() = ComposeUIViewController {
 
     val vm = remember {
         LandingViewModel().apply {
-            configureSampling(Environment.PRODUCTION)
+            configureSampling(Environment.STAGING)
         }
     }
 
