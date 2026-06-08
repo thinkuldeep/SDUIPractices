@@ -28,7 +28,8 @@ object TracingProvider {
                 spanId = null,
                 parentSpanId = parent?.spanId,
                 name = name,
-                traceState = parent?.traceState ?: ""
+                traceState = parent?.traceState ?: "",
+                traceFlags = parent?.traceFlags  // Inherit sampling decision from parent
             )
             spanStack.add(span)
             currentSpan = span

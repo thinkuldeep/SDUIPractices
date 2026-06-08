@@ -29,20 +29,24 @@ data class Span(
             spanId: String? = null,
             parentSpanId: String? = null,
             name: String = "span",
-            traceState: String = ""
+            traceState: String = "",
+            traceFlags: String? = null
         ): Span {
             val finalTraceState = if (traceState.isEmpty()) {
                 "device-id=${PlatformConfig.deviceId},device-os=${PlatformConfig.deviceOs}"
             } else {
                 traceState
             }
+            // Use provided traceFlags, or get from sampler for new traces
+            val flags = traceFlags ?: TraceSamplerHolder.getTraceFlags()
+
             return Span(
                 traceId = traceId ?: generateTraceId(),
                 spanId = spanId ?: generateSpanId(),
                 parentSpanId = parentSpanId,
                 name = name,
                 traceState = finalTraceState,
-                traceFlags = TraceSamplerHolder.getTraceFlags()
+                traceFlags = flags
             )
         }
     }
