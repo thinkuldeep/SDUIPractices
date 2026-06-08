@@ -88,6 +88,7 @@ fun Render(component: UiComponent, viewModel: LandingViewModel) {
         }
 
         is UiComponent.Image -> {
+            println("🖼️ [RENDER] Image component: ${component.url} (${component.width}x${component.height})")
             KamelImage(
                 resource = asyncPainterResource(component.url),
                 contentDescription = null,

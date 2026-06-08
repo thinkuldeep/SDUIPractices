@@ -14,6 +14,7 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
 
         // Skip tracing for image requests (avoid timeouts)
         if (isImageUrl(requestUrl)) {
+            println("🖼️ [IMAGE] Skipping trace for: $requestUrl")
             return@onRequest
         }
 
