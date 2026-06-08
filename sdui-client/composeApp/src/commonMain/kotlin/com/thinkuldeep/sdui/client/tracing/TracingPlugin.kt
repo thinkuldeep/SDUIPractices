@@ -17,8 +17,9 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
         // Create a span for this HTTP request
         val requestUrl = request.url.toString()
         val requestMethod = request.method.value
+        val spanName = "$requestMethod ${request.url.host}"
         val span = TracingProvider.startSpan(
-            name = "$requestMethod ${request.url.host}${request.url.encodedPath}",
+            name = spanName,
             parentSpan = TracingProvider.getCurrentSpan()
         )
 
@@ -44,17 +45,6 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
             TracingProvider.addAttribute(it, "http.status_code", response.status.value.toString())
             TracingProvider.endSpan(it, SpanStatus.OK)
             println("🔍 [HTTP] Response: ${response.status.value}")
-        }
-    }
-
-    onError { error ->
-        val request = error.request
-        val span = request.attributes.getOrNull(SPAN_ATTRIBUTE)
-        span?.let {
-            TracingProvider.addAttribute(it, "error.type", error.cause?.javaClass?.simpleName ?: "Unknown")
-            TracingProvider.addAttribute(it, "error.message", error.cause?.message ?: "")
-            TracingProvider.endSpan(it, SpanStatus.ERROR)
-            println("❌ [HTTP] Error: ${error.cause?.message}")
         }
     }
 }

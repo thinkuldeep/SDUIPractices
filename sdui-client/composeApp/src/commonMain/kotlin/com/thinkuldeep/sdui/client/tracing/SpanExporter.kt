@@ -1,5 +1,7 @@
 package com.thinkuldeep.sdui.client.tracing
 
+import com.thinkuldeep.sdui.client.PlatformConfig
+import com.thinkuldeep.sdui.client.threading.threadSafeExecute
 import io.ktor.client.HttpClient
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -9,12 +11,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
-import kotlinx.serialization.json.putJsonArray
 
 interface SpanExporter {
     suspend fun export(spans: List<Span>)
@@ -35,6 +31,7 @@ class JaegerSpanExporter(
 ) : SpanExporter {
 
     private val spanBuffer = mutableListOf<Span>()
+    private val bufferLock = Any()
     private var flushJob: Job? = null
 
     init {
@@ -51,16 +48,24 @@ class JaegerSpanExporter(
     }
 
     private suspend fun flushIfNeeded() {
-        synchronized(spanBuffer) {
+        threadSafeExecute(bufferLock) {
             if (spanBuffer.size >= config.batchSize) {
                 val spansToExport = spanBuffer.take(config.batchSize)
                 spanBuffer.removeAll(spansToExport.toSet())
-                export(spansToExport)
+                spansToExport
+            } else {
+                null
             }
+        }?.let { spansToExport ->
+            doExport(spansToExport)
         }
     }
 
     override suspend fun export(spans: List<Span>) {
+        doExport(spans)
+    }
+
+    private suspend fun doExport(spans: List<Span>) {
         // Filter to only sampled spans
         val sampledSpans = spans.filter { it.traceFlags == "01" }
         if (sampledSpans.isEmpty()) {
@@ -74,11 +79,10 @@ class JaegerSpanExporter(
                 contentType(ContentType.Application.Json)
                 setBody(payload)
             }
-            println("✅ [JAEGER] Exported ${sampledSpans.size}/${spans.size} sampled spans to ${config.endpoint}")
+            println("✅ [JAEGER] Exported ${sampledSpans.size}/${spans.size} sampled spans")
         } catch (e: Exception) {
             println("❌ [JAEGER] Failed to export spans: ${e.message}")
-            // Buffer failed spans for retry
-            synchronized(spanBuffer) {
+            threadSafeExecute(bufferLock) {
                 spanBuffer.addAll(sampledSpans)
             }
         }
@@ -89,99 +93,69 @@ class JaegerSpanExporter(
         println("🔍 [JAEGER] Exporter shutdown")
     }
 
-    fun addSpan(span: Span) {
-        synchronized(spanBuffer) {
-            spanBuffer.add(span)
-            if (spanBuffer.size >= config.batchSize) {
-                scope.launch {
-                    flushIfNeeded()
-                }
+    private fun buildJaegerPayload(spans: List<Span>): String {
+        val spanJson = spans.map { span ->
+            """
+            {
+              "traceID": "${span.traceId}",
+              "spanID": "${span.spanId}",
+              "parentSpanID": "${span.parentSpanId ?: ""}",
+              "operationName": "${span.name}",
+              "startTime": ${span.startTime * 1000},
+              "duration": ${(span.duration() ?: 0) * 1000},
+              "tags": ${buildTagsJson(span)}
             }
+            """.trimIndent()
         }
+
+        return """
+        {
+          "data": [
+            {
+              "traceID": "${spans.first().traceId}",
+              "spans": [${spanJson.joinToString(",")}],
+              "processID": "p1"
+            }
+          ],
+          "processes": {
+            "p1": {
+              "serviceName": "${config.serviceName}",
+              "tags": [
+                {
+                  "key": "device.id",
+                  "type": "string",
+                  "value": "${PlatformConfig.deviceId}"
+                },
+                {
+                  "key": "device.os",
+                  "type": "string",
+                  "value": "${PlatformConfig.deviceOs}"
+                }
+              ]
+            }
+          }
+        }
+        """.trimIndent()
     }
 
-    private fun buildJaegerPayload(spans: List<Span>): String {
-        val json = buildJsonObject {
-            putJsonArray("data") {
-                spans.forEach { span ->
-                    addJsonObject {
-                        put("traceID", span.traceId)
-                        putJsonArray("spans") {
-                            addJsonObject {
-                                put("traceID", span.traceId)
-                                put("spanID", span.spanId)
-                                put("parentSpanID", span.parentSpanId ?: "")
-                                put("operationName", span.name)
-                                put("startTime", span.startTime * 1_000)
-                                put("duration", (span.duration() ?: 0) * 1_000)
-                                put("flags", span.traceFlags.toInt(16))
+    private fun buildTagsJson(span: Span): String {
+        val tags = mutableListOf<String>()
 
-                                putJsonArray("tags") {
-                                    addJsonObject {
-                                        put("key", "span.kind")
-                                        put("type", "string")
-                                        put("value", "INTERNAL")
-                                    }
-                                    addJsonObject {
-                                        put("key", "device.id")
-                                        put("type", "string")
-                                        put("value", PlatformConfig.deviceId)
-                                    }
-                                    addJsonObject {
-                                        put("key", "device.os")
-                                        put("type", "string")
-                                        put("value", PlatformConfig.deviceOs)
-                                    }
-                                    addJsonObject {
-                                        put("key", "status")
-                                        put("type", "string")
-                                        put("value", span.status.name)
-                                    }
+        tags.add("""{"key":"span.kind","type":"string","value":"INTERNAL"}""")
+        tags.add("""{"key":"device.id","type":"string","value":"${PlatformConfig.deviceId}"}""")
+        tags.add("""{"key":"device.os","type":"string","value":"${PlatformConfig.deviceOs}"}""")
+        tags.add("""{"key":"status","type":"string","value":"${span.status.name}"}""")
 
-                                    span.attributes.forEach { (k, v) ->
-                                        addJsonObject {
-                                            put("key", k)
-                                            put("type", "string")
-                                            put("value", v)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        put("processID", "p1")
-                    }
-                }
-            }
-
-            putJsonObject("processes") {
-                putJsonObject("p1") {
-                    put("serviceName", config.serviceName)
-                    putJsonArray("tags") {
-                        addJsonObject {
-                            put("key", "device.id")
-                            put("type", "string")
-                            put("value", PlatformConfig.deviceId)
-                        }
-                        addJsonObject {
-                            put("key", "device.os")
-                            put("type", "string")
-                            put("value", PlatformConfig.deviceOs)
-                        }
-                    }
-                }
-            }
+        span.attributes.forEach { (k, v) ->
+            val safeVal = v.replace("\"", "\\\"")
+            tags.add("""{"key":"$k","type":"string","value":"$safeVal"}""")
         }
 
-        return json.toString()
+        return "[${tags.joinToString(",")}]"
     }
 }
 
 class NoOpSpanExporter : SpanExporter {
-    override suspend fun export(spans: List<Span>) {
-        // No-op for testing
-    }
-
-    override fun shutdown() {
-        // No-op
-    }
+    override suspend fun export(spans: List<Span>) {}
+    override fun shutdown() {}
 }
