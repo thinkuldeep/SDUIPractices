@@ -5,7 +5,6 @@ import com.thinkuldeep.sdui.client.model.UiComponent
 import com.thinkuldeep.sdui.client.network.HttpClientFactory
 import com.thinkuldeep.sdui.client.tracing.TraceContext
 import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
-import com.thinkuldeep.sdui.client.tracing.TraceContextPropagator
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
