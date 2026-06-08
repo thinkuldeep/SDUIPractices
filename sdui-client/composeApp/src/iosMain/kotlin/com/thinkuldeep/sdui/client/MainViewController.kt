@@ -47,9 +47,7 @@ fun MainViewController() = ComposeUIViewController {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight()) {
+        Box(modifier = Modifier.fillMaxWidth()) {
             state.value?.let {
                 Render(it, vm)
             }
@@ -58,7 +56,7 @@ fun MainViewController() = ComposeUIViewController {
 
     // Log current trace
     traceContext.value?.let { trace ->
-        val logMsg = "🔍 [TRACE] Current - TraceID: ${trace.traceId.take(8)}..., " +
+        val logMsg = "🔍 [TRACE] Current - TraceID: ${trace.traceId}, " +
                 "Sampled: ${trace.isSampled}, " +
                 "Flags: ${trace.traceFlags}"
         println(logMsg)
