@@ -1,8 +1,10 @@
 package com.thinkuldeep.sdui.client.viewmodel
 
+import com.thinkuldeep.sdui.client.PlatformConfig
 import com.thinkuldeep.sdui.client.data.UiDataSource
 import com.thinkuldeep.sdui.client.data.UiRepository
 import com.thinkuldeep.sdui.client.model.UiComponent
+import com.thinkuldeep.sdui.client.network.HttpClientFactory
 import com.thinkuldeep.sdui.client.threading.threadSafeExecute
 import com.thinkuldeep.sdui.client.tracing.Environment
 import com.thinkuldeep.sdui.client.tracing.JaegerExporterConfig
@@ -12,7 +14,6 @@ import com.thinkuldeep.sdui.client.tracing.TraceContext
 import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
 import com.thinkuldeep.sdui.client.tracing.TraceSamplerHolder
 import com.thinkuldeep.sdui.client.tracing.TracingProvider
-import com.thinkuldeep.sdui.client.network.HttpClientFactory
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,7 +106,7 @@ class LandingViewModel(
 
         // Initialize tracing provider with Jaeger exporter
         val jaegerConfig = JaegerExporterConfig(
-            endpoint = "http://localhost:14268/api/traces",
+            endpoint = PlatformConfig.jaegerEndpoint,
             serviceName = "sdui-mobile-client"
         )
         val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.client, scope)
