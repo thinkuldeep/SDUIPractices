@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import com.thinkuldeep.sdui.client.renderer.Render
 import com.thinkuldeep.sdui.client.renderer.RenderWithRefresh
 import com.thinkuldeep.sdui.client.tracing.Environment
+import com.thinkuldeep.sdui.client.tracing.OpenTelemetryInit
 import com.thinkuldeep.sdui.client.tracing.TraceContext
 import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
 import com.thinkuldeep.sdui.client.viewmodel.LandingViewModel

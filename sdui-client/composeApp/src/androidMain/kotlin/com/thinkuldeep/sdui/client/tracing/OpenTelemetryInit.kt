@@ -1,13 +1,12 @@
 package com.thinkuldeep.sdui.client.tracing
 
 import android.content.Context
+import com.thinkuldeep.sdui.client.PlatformConfig
 import io.opentelemetry.sdk.OpenTelemetrySdk
 import io.opentelemetry.sdk.trace.SdkTracerProvider
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
 import io.opentelemetry.exporter.jaeger.thrift.JaegerThriftSpanExporter
 import io.opentelemetry.sdk.resources.Resource
-import io.opentelemetry.semconv.ResourceAttributes
-import io.opentelemetry.api.GlobalOpenTelemetry
 
 object OpenTelemetryInit {
     private var isInitialized = false
@@ -22,14 +21,11 @@ object OpenTelemetryInit {
                 .build()
 
             // Create resource with service name and device info
-            val resource = Resource.getDefault()
-                .merge(
-                    Resource.builder()
-                        .put(ResourceAttributes.SERVICE_NAME, "sdui-mobile-client")
-                        .put("device.id", PlatformConfig.deviceId)
-                        .put("device.os", "android")
-                        .build()
-                )
+            val resource = Resource.builder()
+                .put("service.name", "sdui-mobile-client")
+                .put("device.id", PlatformConfig.deviceId)
+                .put("device.os", "android")
+                .build()
 
             // Create tracer provider with Jaeger exporter
             val tracerProvider = SdkTracerProvider.builder()
