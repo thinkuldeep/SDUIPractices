@@ -61,20 +61,25 @@ class JaegerSpanExporter(
     }
 
     override suspend fun export(spans: List<Span>) {
-        if (spans.isEmpty()) return
+        // Filter to only sampled spans
+        val sampledSpans = spans.filter { it.traceFlags == "01" }
+        if (sampledSpans.isEmpty()) {
+            println("🔍 [JAEGER] No sampled spans to export (${spans.size} total)")
+            return
+        }
 
         try {
-            val payload = buildJaegerPayload(spans)
+            val payload = buildJaegerPayload(sampledSpans)
             httpClient.post(config.endpoint) {
                 contentType(ContentType.Application.Json)
                 setBody(payload)
             }
-            println("✅ [JAEGER] Exported ${spans.size} spans to ${config.endpoint}")
+            println("✅ [JAEGER] Exported ${sampledSpans.size}/${spans.size} sampled spans to ${config.endpoint}")
         } catch (e: Exception) {
             println("❌ [JAEGER] Failed to export spans: ${e.message}")
             // Buffer failed spans for retry
             synchronized(spanBuffer) {
-                spanBuffer.addAll(spans)
+                spanBuffer.addAll(sampledSpans)
             }
         }
     }

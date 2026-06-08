@@ -52,11 +52,15 @@ object TracingProvider {
             val duration = span.duration() ?: 0
             println("🔍 [SPAN] Ended: ${span.name} (${span.spanId}) - ${duration}ms - Status: $status")
 
-            // Export if exporter is available
-            scope?.let { s ->
-                s.launch {
-                    exporter?.export(listOf(span))
+            // Export only sampled spans
+            if (span.traceFlags == "01") {
+                scope?.let { s ->
+                    s.launch {
+                        exporter?.export(listOf(span))
+                    }
                 }
+            } else {
+                println("🔍 [SPAN] Skipping export - not sampled: ${span.name}")
             }
         }
     }
