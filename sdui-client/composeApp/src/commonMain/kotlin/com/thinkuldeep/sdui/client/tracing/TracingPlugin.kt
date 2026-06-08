@@ -17,7 +17,7 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
         // Create a span for this HTTP request
         val requestUrl = request.url.toString()
         val requestMethod = request.method.value
-        val spanName = "$requestMethod ${request.url.host}"
+        val spanName = "$requestMethod $requestUrl"
         val span = TracingProvider.startSpan(
             name = spanName,
             parentSpan = TracingProvider.getCurrentSpan()

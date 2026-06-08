@@ -18,7 +18,7 @@ interface SpanExporter {
 }
 
 data class JaegerExporterConfig(
-    val endpoint: String = "http://localhost:14268/api/traces",
+    val endpoint: String = "http://localhost:4318/v1/traces",
     val serviceName: String = "sdui-mobile-client",
     val batchSize: Int = 10,
     val flushIntervalMs: Long = 5000L
@@ -75,8 +75,8 @@ class JaegerSpanExporter(
 
         try {
             val payload = buildJaegerPayload(sampledSpans)
-            println("📤 [JAEGER] Sending payload to ${config.endpoint}")
-            println("📤 [JAEGER] Payload: ${payload.take(200)}...")
+            // println("📤 [JAEGER] Sending payload to ${config.endpoint}")
+            // println("📤 [JAEGER] Payload: ${payload.take(200)}...")
 
             httpClient.post(config.endpoint) {
                 contentType(ContentType.Application.Json)
@@ -85,7 +85,7 @@ class JaegerSpanExporter(
             println("✅ [JAEGER] Exported ${sampledSpans.size}/${spans.size} sampled spans")
         } catch (e: Exception) {
             println("❌ [JAEGER] Failed to export spans: ${e.message}")
-            e.printStackTrace()
+            //e.printStackTrace()
             threadSafeExecute(bufferLock) {
                 spanBuffer.addAll(sampledSpans)
             }

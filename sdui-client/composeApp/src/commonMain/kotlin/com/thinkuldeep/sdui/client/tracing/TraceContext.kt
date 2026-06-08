@@ -2,6 +2,7 @@ package com.thinkuldeep.sdui.client.tracing
 
 import kotlinx.serialization.Serializable
 import com.thinkuldeep.sdui.client.PlatformConfig
+import com.thinkuldeep.sdui.client.threading.threadSafeExecute
 
 @Serializable
 data class TraceContext(
@@ -48,21 +49,21 @@ data class TraceContext(
 }
 
 object TraceContextHolder {
-    @Volatile
     private var currentContext: TraceContext? = null
+    private val lock = Any()
 
     fun set(context: TraceContext?) {
-        synchronized(this) {
+        threadSafeExecute(lock) {
             currentContext = context
         }
     }
 
-    fun current(): TraceContext? = synchronized(this) {
+    fun current(): TraceContext? = threadSafeExecute(lock) {
         currentContext
     }
 
     fun clear() {
-        synchronized(this) {
+        threadSafeExecute(lock) {
             currentContext = null
         }
     }
