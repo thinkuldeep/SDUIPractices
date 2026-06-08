@@ -21,14 +21,18 @@ fun Render(component: UiComponent, viewModel: LandingViewModel) {
     when (component) {
 
         is UiComponent.Column -> {
-            Column(horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState())
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
             ) {
-                component.children.forEach {
-                    Render(it, viewModel)
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    component.children.forEach {
+                        Render(it, viewModel)
+                    }
                 }
             }
         }
