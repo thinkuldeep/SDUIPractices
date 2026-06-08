@@ -2,6 +2,8 @@ package com.thinkuldeep.sdui.client.renderer
 
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +25,7 @@ fun Render(component: UiComponent, viewModel: LandingViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 component.children.forEach {
                     Render(it, viewModel)
