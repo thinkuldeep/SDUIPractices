@@ -98,15 +98,15 @@ class JaegerSpanExporter(
     }
 
     private fun buildJaegerPayload(spans: List<Span>): String {
-        // Build OTLP (OpenTelemetry Protocol) JSON format
+        // Build OTLP (OpenTelemetry Protocol) JSON format - validated working format
         val spansJson = spans.joinToString(",") { span ->
             val attributes = mutableListOf<String>()
-            attributes.add("""{"key":"service.name","value":{"stringValue":"${config.serviceName}"}}""")
             attributes.add("""{"key":"device.id","value":{"stringValue":"${PlatformConfig.deviceId}"}}""")
             attributes.add("""{"key":"device.os","value":{"stringValue":"${PlatformConfig.deviceOs}"}}""")
 
             span.attributes.forEach { (k, v) ->
-                attributes.add("""{"key":"$k","value":{"stringValue":"${v.replace("\"", "\\\"")}"}}}""")
+                val safeVal = v.replace("\"", "\\\"")
+                attributes.add("""{"key":"$k","value":{"stringValue":"$safeVal"}}""")
             }
 
             """
@@ -115,11 +115,9 @@ class JaegerSpanExporter(
               "spanId": "${span.spanId}",
               "parentSpanId": "${span.parentSpanId ?: ""}",
               "name": "${span.name.replace("\"", "\\\"")}",
-              "kind": 1,
               "startTimeUnixNano": "${span.startTime * 1_000_000}",
               "endTimeUnixNano": "${(span.endTime ?: span.startTime + (span.duration() ?: 0)) * 1_000_000}",
-              "attributes": [${attributes.joinToString(",")}],
-              "status": {"code": ${if (span.status == SpanStatus.ERROR) 2 else 1}}
+              "attributes": [${attributes.joinToString(",")}]
             }
             """.trimIndent()
         }
@@ -130,26 +128,13 @@ class JaegerSpanExporter(
             {
               "resource": {
                 "attributes": [
-                  {
-                    "key": "service.name",
-                    "value": {"stringValue": "${config.serviceName}"}
-                  },
-                  {
-                    "key": "device.id",
-                    "value": {"stringValue": "${PlatformConfig.deviceId}"}
-                  },
-                  {
-                    "key": "device.os",
-                    "value": {"stringValue": "${PlatformConfig.deviceOs}"}
-                  }
+                  {"key": "service.name", "value": {"stringValue": "${config.serviceName}"}},
+                  {"key": "device.id", "value": {"stringValue": "${PlatformConfig.deviceId}"}},
+                  {"key": "device.os", "value": {"stringValue": "${PlatformConfig.deviceOs}"}}
                 ]
               },
               "scopeSpans": [
                 {
-                  "scope": {
-                    "name": "sdui-mobile-client",
-                    "version": "1.0.0"
-                  },
                   "spans": [$spansJson]
                 }
               ]
