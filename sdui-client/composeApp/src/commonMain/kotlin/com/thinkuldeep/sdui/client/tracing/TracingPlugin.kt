@@ -10,13 +10,19 @@ private val SPAN_ATTRIBUTE = AttributeKey<Span>("Span")
 
 val TracingPlugin = createClientPlugin("TracingPlugin") {
     onRequest { request, _ ->
+        val requestUrl = request.url.toString()
+
+        // Skip tracing for image requests (avoid timeouts)
+        if (isImageUrl(requestUrl)) {
+            return@onRequest
+        }
+
         val currentContext = TraceContextHolder.current()
         val traceContext = currentContext ?: TraceContext.create()
 
         TraceContextHolder.set(traceContext)
 
         // Create a span for this HTTP request
-        val requestUrl = request.url.toString()
         val requestMethod = request.method.value
         val spanName = "$requestMethod $requestUrl"
         val span = Span.create(
@@ -53,6 +59,12 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
             println("🔍 [HTTP] Response: ${response.status.value}")
         }
     }
+}
+
+private fun isImageUrl(url: String): Boolean {
+    val imageExtensions = listOf(".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp")
+    val lowerUrl = url.lowercase()
+    return imageExtensions.any { lowerUrl.contains(it) }
 }
 
 fun HttpRequestBuilder.setTraceContext(context: TraceContext) {
