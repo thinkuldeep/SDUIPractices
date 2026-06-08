@@ -11,6 +11,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Run the server (default port 8080)
 ./gradlew bootRun
 
+# Run with OpenTelemetry instrumentation (exports traces to http://localhost:4318/v1/traces)
+# 1. First, download the agent JAR:
+java -cp "build/libs/*" -Dotel.exporter.otlp.endpoint=http://localhost:4318 -javaagent:~/.m2/repository/io/opentelemetry/javaagent/opentelemetry-javaagent/2.2.0/opentelemetry-javaagent-2.2.0.jar -Dspring.devtools.restart.enabled=false -Dfile.encoding=UTF-8 org.springframework.boot.loader.launch.JarLauncher
+
+# Or set environment variables and use Gradle:
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 ./gradlew bootRun
+
 # Run all tests + generate JaCoCo coverage report
 ./gradlew test
 
@@ -55,3 +62,21 @@ This is a **Server-Driven UI (SDUI)** Spring Boot server. The server returns JSO
 Tests use `@WebMvcTest` (slice test — no full Spring context) with `MockMvc` for HTTP-level assertions plus direct controller instantiation for unit-level assertions. The `@WebMvcTest` import is `org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest` (Spring Boot 4.x package).
 
 JaCoCo runs automatically after `./gradlew test` and produces HTML + XML reports under `build/reports/jacoco/`.
+
+### OpenTelemetry & Distributed Tracing
+
+The server exports traces to Jaeger via the OTLP (OpenTelemetry Protocol) HTTP endpoint at `http://localhost:4318/v1/traces`. 
+
+**Configuration:** `OtelConfig.kt` defines a parent-based sampler with 1% base sampling. The exporter is configured via environment variables in `application.properties`:
+- `otel.exporter.otlp.endpoint=http://localhost:4318`
+- `otel.traces.exporter=otlp`
+- `otel.service.name=sdui-server`
+
+**Automatic Instrumentation:** To automatically create spans for HTTP requests and other operations, run the server with the OpenTelemetry Java agent:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+./gradlew bootRun -Dorg.springframework.boot.devtools.restart.trigger-file=.springBoot
+```
+
+Or manually download and use the agent JAR. Without the agent, only trace context propagation works (trace IDs flow through requests but no spans are created on the server).

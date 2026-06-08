@@ -32,6 +32,9 @@ dependencies {
 	implementation("io.opentelemetry:opentelemetry-sdk")
 	implementation("io.opentelemetry.semconv:opentelemetry-semconv:1.25.0-alpha")
 
+	// OpenTelemetry Java Agent for automatic instrumentation
+	runtimeOnly("io.opentelemetry.javaagent:opentelemetry-javaagent:2.2.0")
+
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
