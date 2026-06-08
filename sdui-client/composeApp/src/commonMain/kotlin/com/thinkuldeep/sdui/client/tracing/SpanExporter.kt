@@ -76,7 +76,7 @@ class JaegerSpanExporter(
         try {
             val payload = buildJaegerPayload(sampledSpans)
             println("📤 [JAEGER] Sending payload to ${config.endpoint}")
-            println("📤 [JAEGER] Payload: ${payload.take(500)}...")
+            println("📤 [JAEGER] Payload: ${payload}")
 
             httpClient.post(config.endpoint) {
                 contentType(ContentType.Application.Json)

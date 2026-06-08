@@ -1,7 +1,8 @@
 package com.thinkuldeep.sdui.client.tracing
 
-import kotlin.time.TimeSource
+import platform.Foundation.NSDate
 
 actual fun currentTimeMillis(): Long {
-    return TimeSource.Monotonic.markNow().elapsedNow().inWholeMilliseconds
+    // Get actual Unix timestamp in milliseconds
+    return (NSDate().timeIntervalSince1970 * 1000).toLong()
 }
