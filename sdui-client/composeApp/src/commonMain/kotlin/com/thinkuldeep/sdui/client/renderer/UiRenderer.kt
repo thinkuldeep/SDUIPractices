@@ -23,7 +23,7 @@ fun Render(component: UiComponent, viewModel: LandingViewModel) {
         is UiComponent.Column -> {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
