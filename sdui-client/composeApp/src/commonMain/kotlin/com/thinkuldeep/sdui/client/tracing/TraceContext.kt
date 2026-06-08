@@ -7,9 +7,10 @@ data class TraceContext(
     val traceId: String,
     val spanId: String,
     val parentSpanId: String? = null,
-    val traceFlags: String = "01",
+    val traceFlags: String = TraceSamplerHolder.getTraceFlags(),
     val traceState: String = "",
-    val timestamp: Long = currentTimeMillis()
+    val timestamp: Long = currentTimeMillis(),
+    val isSampled: Boolean = traceFlags == "01"
 ) {
     fun toTraceparent(): String = "$TRACE_VERSION-$traceId-$spanId-$traceFlags"
 
@@ -24,13 +25,17 @@ data class TraceContext(
             traceId: String? = null,
             spanId: String? = null,
             parentSpanId: String? = null,
-            traceState: String = ""
+            traceState: String = "",
+            traceFlags: String? = null
         ): TraceContext {
+            val flags = traceFlags ?: TraceSamplerHolder.getTraceFlags()
             return TraceContext(
                 traceId = traceId ?: generateTraceId(),
                 spanId = spanId ?: generateSpanId(),
                 parentSpanId = parentSpanId,
-                traceState = traceState
+                traceState = traceState,
+                traceFlags = flags,
+                isSampled = flags == "01"
             )
         }
     }

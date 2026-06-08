@@ -22,6 +22,10 @@ class HttpLoggingFilter : OncePerRequestFilter() {
 
         val wrappedResponse = ContentCachingResponseWrapper(response)
 
+        val traceparent = request.getHeader("traceparent")
+        val tracestate = request.getHeader("tracestate")
+        val xTraceId = request.getHeader("x-trace-id")
+
         try {
             filterChain.doFilter(request, wrappedResponse)
         } finally {
@@ -32,13 +36,20 @@ class HttpLoggingFilter : OncePerRequestFilter() {
             val query = request.queryString
             val status = wrappedResponse.status
 
+            val traceInfo = buildString {
+                if (traceparent != null) append(" [traceparent=$traceparent]")
+                if (tracestate != null) append(" [tracestate=$tracestate]")
+                if (xTraceId != null) append(" [x-trace-id=$xTraceId]")
+            }
+
             log.info(
-                "HTTP {} {}{} → {} ({} ms)",
+                "HTTP {} {}{} → {} ({} ms){}",
                 method,
                 uri,
                 if (query != null) "?$query" else "",
                 status,
-                duration
+                duration,
+                traceInfo
             )
 
             wrappedResponse.copyBodyToResponse()

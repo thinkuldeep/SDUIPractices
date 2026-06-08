@@ -24,6 +24,14 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
+
+	// OpenTelemetry via Spring Boot
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation(platform("io.opentelemetry:opentelemetry-bom:1.40.0"))
+	implementation("io.opentelemetry:opentelemetry-api")
+	implementation("io.opentelemetry:opentelemetry-sdk")
+	implementation("io.opentelemetry.semconv:opentelemetry-semconv:1.25.0-alpha")
+
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
