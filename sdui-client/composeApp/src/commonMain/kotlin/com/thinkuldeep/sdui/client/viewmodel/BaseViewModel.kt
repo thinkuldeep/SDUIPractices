@@ -9,6 +9,7 @@ import com.thinkuldeep.sdui.client.tracing.SamplingConfig
 import com.thinkuldeep.sdui.client.tracing.Span
 import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
 import com.thinkuldeep.sdui.client.tracing.TracingProvider
+import com.thinkuldeep.sdui.client.tracing.currentTimeMillis
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,4 +53,13 @@ abstract class BaseViewModel(dispatcher: CoroutineDispatcher = Dispatchers.Defau
     }
 
     protected open fun onSamplingConfigured() {}
+
+    protected fun onError(error: Throwable, span: Span? = null) {
+        SamplingConfig.markError()
+        val tracingSpan = span ?: _span.value
+        if (tracingSpan != null) {
+            TracingProvider.recordError(tracingSpan, error)
+        }
+        println("❌ Error occurred: ${error.message}")
+    }
 }

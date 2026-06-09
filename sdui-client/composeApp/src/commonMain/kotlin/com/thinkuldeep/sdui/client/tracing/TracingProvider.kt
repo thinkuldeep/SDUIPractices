@@ -52,8 +52,11 @@ object TracingProvider {
             val duration = span.duration() ?: 0
             println("🔍 [SPAN] Ended: ${span.name} (${span.spanId}) - ${duration}ms - Status: $status")
 
-            // Export only sampled spans
-            if (span.traceFlags == "01") {
+            if (status == SpanStatus.ERROR) {
+                SamplingConfig.markError()
+            }
+
+            if (span.isSampled) {
                 scope?.let { s ->
                     s.launch {
                         exporter?.export(listOf(span))
@@ -62,6 +65,18 @@ object TracingProvider {
             } else {
                 println("🔍 [SPAN] Skipping export - not sampled: ${span.name}")
             }
+        }
+    }
+
+    fun recordError(span: Span, error: Throwable) {
+        threadSafeExecute(lock) {
+            val attributes = span.attributes.toMutableMap()
+            attributes["error.type"] = error::class.simpleName ?: "Unknown"
+            attributes["error.message"] = error.message ?: "No message"
+            span.attributes = attributes
+            span.status = SpanStatus.ERROR
+            println("🔍 [ERROR] ${error::class.simpleName}: ${error.message}")
+            SamplingConfig.markError()
         }
     }
 
