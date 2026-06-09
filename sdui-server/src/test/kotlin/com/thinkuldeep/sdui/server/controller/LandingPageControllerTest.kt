@@ -29,9 +29,9 @@ class LandingPageControllerTest {
     }
 
     @Test
-    fun `landingPage root column has four children`() {
+    fun `landingPage root column has five children`() {
         val result = controller.landingPage() as Column
-        assertEquals(4, result.children.size)
+        assertEquals(5, result.children.size)
     }
 
     @Test
@@ -62,10 +62,10 @@ class LandingPageControllerTest {
     }
 
     @Test
-    fun `landingPage books FeaturedItems has four children`() {
+    fun `landingPage books FeaturedItems has three children`() {
         val root = controller.landingPage() as Column
         val books = assertIs<FeaturedItems>(root.children[2])
-        assertEquals(4, books.children.size)
+        assertEquals(3, books.children.size)
     }
 
     @Test
@@ -105,9 +105,9 @@ class LandingPageControllerTest {
     }
 
     @Test
-    fun `GET landing endpoint root column has four children`() {
+    fun `GET landing endpoint root column has five children`() {
         mockMvc.get("/api/ui/landing")
-            .andExpect { jsonPath("$.children.length()") { value(4) } }
+            .andExpect { jsonPath("$.children.length()") { value(5) } }
     }
 
     @Test
