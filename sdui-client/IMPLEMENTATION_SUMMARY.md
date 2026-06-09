@@ -1,269 +1,349 @@
-# OpenTelemetry Tracing Implementation - Summary
+# Distributed Tracing & Error Monitoring - Implementation Summary
 
 ## Overview
 
-OpenTelemetry (OTEL) based distributed tracing has been successfully implemented in the SDUI client. The implementation follows the W3C Trace Context specification and enables end-to-end observability across mobile app, backend server, and other services.
+A complete distributed tracing and error monitoring system has been implemented using OpenTelemetry (OTEL) and Jaeger. The system automatically tracks HTTP requests, captures errors, and exports traces for end-to-end observability.
+
+**Key Achievement**: Error spans are ALWAYS exported to Jaeger for visibility, even when sampling is disabled.
 
 ## What Was Implemented
 
-### 1. Core Tracing Components
+### 1. Core Tracing Architecture
 
-#### TraceContext (`tracing/TraceContext.kt`)
-- Data class holding trace information (traceId, spanId, traceState, flags)
-- Generates W3C-compliant traceparent headers
-- Platform-specific time implementations for Android/iOS
+#### Span Model (`tracing/Span.kt`)
+- **Data Structure**: Represents operations with traceId, spanId, parentSpanId, name, status, attributes
+- **Lifecycle**: startTime, endTime, status (UNSET/OK/ERROR)
+- **Sampling**: traceFlags ("01" = sampled, "00" = not sampled)
+- **Factory**: `Span.create()` respects SamplingConfig for trace flags
 
-#### TraceContextPropagator (`tracing/TraceContextPropagator.kt`)
-- Extracts trace context from HTTP headers
-- Injects trace context into HTTP requests
-- Creates child spans with the same trace ID
+#### SpanContextHolder (`tracing/Span.kt`)
+- Thread-safe storage for current span context
+- Used to correlate errors with their HTTP spans
+- Platform-agnostic (works across Android, iOS, Web)
+
+#### TracingProvider (`tracing/TracingProvider.kt`)
+- **Span Lifecycle Management**
+  - `startSpan()` - Create child spans
+  - `endSpan()` - Close span and export if sampled OR has ERROR status
+  - `recordError()` - Add error details (type, message) to span
+- **Key Logic**: Error spans bypass sampling - always exported
+- **Export Trigger**: `exportIfSampled()` checks `isSampled || status == ERROR`
 
 #### TracingPlugin (`tracing/TracingPlugin.kt`)
-- Ktor HTTP client plugin
-- Automatically injects trace headers into all requests
-- Logs request completion with trace information
+- Ktor HTTP client plugin for automatic request tracking
+- `onRequest`: Creates child span, injects W3C traceparent header
+- `onResponse`: Sets span status based on HTTP code (>= 400 = ERROR)
+- Automatic header injection: `traceparent` and `tracestate`
 
-#### Platform-Specific Implementations
-- `androidMain/tracing/TimeUtils.kt`: Uses `System.currentTimeMillis()`
-- `iosMain/tracing/TimeUtils.kt`: Uses Kotlin `TimeSource.Monotonic`
+#### JaegerSpanExporter (`tracing/SpanExporter.kt`)
+- OTLP (OpenTelemetry Protocol) format exporter
+- Sends spans to Jaeger collector at configurable endpoint
+- **Critical Filter**: Exports if `traceFlags == "01" || status == SpanStatus.ERROR`
+- Batches and retries on failure
 
-### 2. Integration Points
+#### AppInitializer (`AppInitializer.kt`)
+- **Initialization Flow**:
+  1. Set SamplingConfig (environment + isQaUser)
+  2. Initialize Jaeger exporter
+  3. Create root span (respects sampling config)
+  4. Store in SpanContextHolder
+- **One-time Setup**: Called once at app startup before any ViewModels
 
-#### HttpClientFactory (`network/HttpClientFactory.kt`)
-- TracingPlugin installed automatically
-- All HTTP requests include trace headers
+### 2. Error Tracking Pipeline
 
-#### UiRepository (`data/UiRepository.kt`)
-- Exposes methods to set/get trace context
-- Logs trace information for debugging
-- Supports both TraceContext objects and header strings
+#### HTTP Error Detection
+```
+HTTP Request (status >= 400)
+    ↓
+TracingPlugin.onResponse()
+    ├─ Set status = ERROR
+    └─ Call endSpan(span, ERROR)
+    
+TracingProvider.endSpan()
+    ├─ exportIfSampled() checks: isSampled || status == ERROR
+    └─ Always exports (because ERROR)
+    
+JaegerSpanExporter
+    ├─ Filter: traceFlags == "01" || status == ERROR
+    └─ Always exports (because ERROR)
+```
 
-#### LandingViewModel (`viewmodel/LandingViewModel.kt`)
-- Initializes trace context automatically
-- Exposes methods to set/get trace context
-- StateFlow tracks current trace context
-- Enables trace context injection from parent applications
+#### Error Recording
+```
+UiRepository.fetchLanding() throws exception
+    ↓
+LandingViewModel.load() catches error
+    ├─ recordError(parentSpan, exception)
+    └─ Span status already set to ERROR from HTTP response
+    
+recordError() adds attributes:
+    ├─ error.type: Exception class name
+    └─ error.message: Exception message
+```
 
 ### 3. Sampling Configuration
 
-#### TraceSampler (`tracing/TraceSampler.kt`)
-- Intelligent sampling based on environment and user type
-- Environment-based rates:
-  - Production: 1% sampling
-  - Staging: 20% sampling
-  - QA: 100% sampling
-  - QA Users: 100% sampling (even in production)
-  - Development: 100% sampling
-- Always sends trace context headers (even for non-sampled requests)
-- Global holder for application-wide configuration
-
-### 4. Test Coverage
-
-#### TraceContextTest (`commonTest/tracing/TraceContextTest.kt`)
-- Tests trace context creation and formatting
-- Tests thread-local holder operations
-- Tests trace ID/span ID generation
-
-#### TraceContextPropagatorTest (`commonTest/tracing/TraceContextPropagatorTest.kt`)
-- Tests header injection and extraction
-- Tests W3C trace context format compliance
-- Tests child context creation
-
-#### TraceSamplerTest (`commonTest/tracing/TraceSamplerTest.kt`)
-- Tests sampling rates for each environment
-- Tests QA user special handling
-- Tests trace flags (01 for sampled, 00 for non-sampled)
-- Tests sampler holder configuration
-
-**Test Results:**
-- ✅ All Android tests pass (50+ tests)
-- ✅ iOS compilation successful (1 pre-existing test flakiness unrelated to tracing)
-
-## Key Features
-
-### Automatic Header Injection
-```
-traceparent: 00-<32-char-hex-traceId>-<16-char-hex-spanId>-<traceFlags>
-tracestate: <optional-vendor-data>
-```
-
-### W3C Trace Context Compliance
-- Follows W3C Trace Context specification
-- Supports vendor-specific trace state
-- Compatible with all major observability platforms
-- Trace context always sent, even for non-sampled requests
-
-### Environment-Based Intelligent Sampling
-- **Production**: 1% sampling (cost-effective)
-- **Staging**: 20% sampling (balanced testing)
-- **QA**: 100% sampling (full visibility)
-- **QA Users**: 100% sampling even in production
-- **Development**: 100% sampling (maximum visibility)
-
-### Zero Configuration
-- Traces automatically generated
-- Headers automatically injected
-- Sensible defaults for each environment
-- Optional: Configure sampling for specific needs
-
-### Flexible Integration
-- Accept trace context from parent apps
-- Pass trace context to backend services
-- Custom trace context support
-- Configure sampling at runtime
-- Support for QA user tracking
-
-## Architecture
-
-```
-┌─────────────────────────────────────┐
-│     SDUI Mobile Application         │
-│                                     │
-│  ┌──────────────────────────────┐   │
-│  │   LandingViewModel           │   │
-│  │   - Manages Trace Context    │   │
-│  │   - StateFlow<TraceContext>  │   │
-│  └──────────────────────────────┘   │
-│              ↓                       │
-│  ┌──────────────────────────────┐   │
-│  │   UiRepository               │   │
-│  │   - Fetch UI with context    │   │
-│  │   - Log trace info           │   │
-│  └──────────────────────────────┘   │
-│              ↓                       │
-│  ┌──────────────────────────────┐   │
-│  │   HttpClientFactory          │   │
-│  │   - TracingPlugin installed  │   │
-│  │   - Injects headers          │   │
-│  └──────────────────────────────┘   │
-│              ↓                       │
-│  ┌──────────────────────────────┐   │
-│  │   HTTP Request               │   │
-│  │   Headers:                   │   │
-│  │   - traceparent: 00-xxxx-xx-01│  │
-│  │   - tracestate: <optional>   │   │
-│  └──────────────────────────────┘   │
-└─────────────────────────────────────┘
-           ↓
-        Network
-           ↓
-┌─────────────────────────────────────┐
-│      Backend Server                 │
-│  - Extract traceparent header       │
-│  - Create server span               │
-│  - Inject into downstream calls     │
-└─────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────┐
-│   Observability Platform            │
-│   (Jaeger, Datadog, Honeycomb)      │
-│                                     │
-│   Single Pane of Glass              │
-│   - End-to-end trace visualization  │
-│   - Latency analysis                │
-│   - Service dependency mapping      │
-└─────────────────────────────────────┘
-```
-
-## Files Created/Modified
-
-### New Files
-- `composeApp/src/commonMain/kotlin/com/thinkuldeep/sdui/client/tracing/TraceContext.kt`
-- `composeApp/src/commonMain/kotlin/com/thinkuldeep/sdui/client/tracing/TraceContextPropagator.kt`
-- `composeApp/src/commonMain/kotlin/com/thinkuldeep/sdui/client/tracing/TracingPlugin.kt`
-- `composeApp/src/commonMain/kotlin/com/thinkuldeep/sdui/client/tracing/TraceSampler.kt`
-- `composeApp/src/androidMain/kotlin/com/thinkuldeep/sdui/client/tracing/TimeUtils.kt`
-- `composeApp/src/iosMain/kotlin/com/thinkuldeep/sdui/client/tracing/TimeUtils.kt`
-- `composeApp/src/commonTest/kotlin/com/thinkuldeep/sdui/client/tracing/TraceContextTest.kt`
-- `composeApp/src/commonTest/kotlin/com/thinkuldeep/sdui/client/tracing/TraceContextPropagatorTest.kt`
-- `composeApp/src/commonTest/kotlin/com/thinkuldeep/sdui/client/tracing/TraceSamplerTest.kt`
-- `TRACING.md` - Complete documentation including sampling section
-- `TRACING_EXAMPLES.md` - Practical examples and integration guides
-- `SAMPLING_CONFIG.md` - Detailed sampling configuration guide with examples
-
-### Modified Files
-- `composeApp/src/commonMain/kotlin/com/thinkuldeep/sdui/client/network/HttpClientFactory.kt` - Added TracingPlugin
-- `composeApp/src/commonMain/kotlin/com/thinkuldeep/sdui/client/data/UiRepository.kt` - Added trace context methods
-- `composeApp/src/commonMain/kotlin/com/thinkuldeep/sdui/client/viewmodel/LandingViewModel.kt` - Added trace context management
-
-## Usage
-
-### Default (Automatic Tracing)
+#### SamplingConfig (`tracing/SamplingConfig.kt`)
 ```kotlin
-val viewModel = LandingViewModel()
-// Traces automatically generated and injected
-```
-
-### With Parent Trace Context
-```kotlin
-val viewModel = LandingViewModel()
-viewModel.setTraceContext(
-    traceparent = "00-<parent-trace-id>-<parent-span-id>-01",
-    tracestate = "vendor=data"
+data class SamplingConfig(
+    val environment: Environment,
+    val isQaUser: Boolean = false
 )
+
+enum class Environment {
+    DEVELOPMENT,  // 100% sampling
+    STAGING,      // 20% sampling
+    QA,          // 100% sampling
+    PRODUCTION   // 1% sampling
+}
 ```
 
-### Custom Configuration
+#### Sampling Behavior
+- **Root span**: Respects environment sampling rate
+- **HTTP request spans**: Inherit parent's sampling decision
+- **Error spans**: ALWAYS exported (forced sampling)
+- **W3C Compliance**: Trace context headers sent even for non-sampled traces
+
+### 4. Integration Points
+
+#### App Startup (MainActivity/MainViewController)
 ```kotlin
-val context = TraceContext.create(
-    traceId = "custom-trace-id",
-    spanId = "custom-span-id"
-)
-viewModel.setTraceContext(context)
+// Before creating any ViewModels
+AppInitializer.initializeApp()
+
+// Then create ViewModel - it will have access to root span
+val viewModel = remember { LandingViewModel() }
 ```
 
-## Next Steps for Single Pane of Glass
+#### HTTP Client (`HttpClientFactory.kt`)
+- TracingPlugin installed automatically
+- All requests include traceparent/tracestate headers
+- Span created/ended for each request
 
-1. **Backend Integration**
-   - Extract `traceparent` and `tracestate` headers
-   - Create server spans with same trace ID
-   - Propagate headers to downstream services
+#### Error Handling (`BaseViewModel.kt`)
+```kotlin
+protected fun recordError(error: Throwable) {
+    // Uses global span from SpanContextHolder as fallback
+    val span = _span.value ?: SpanContextHolder.current()
+    if (span != null) {
+        TracingProvider.recordError(span, error)
+    }
+}
+```
 
-2. **Observability Setup**
-   - Deploy Jaeger (or Datadog, Honeycomb, etc.)
-   - Configure OTLP exporters on backend
-   - Set up collector to receive traces
+### 5. Response Status Handling
 
-3. **Dashboard Creation**
-   - Create saved queries by service
-   - Visualize trace timelines
-   - Monitor latency by operation
-   - Alert on anomalies
+#### HTTP Status → Span Status Mapping
+```
+HTTP Status < 400 → SpanStatus.OK (green in Jaeger)
+HTTP Status >= 400 → SpanStatus.ERROR (red in Jaeger)
 
-4. **Advanced Features**
-   - Span attributes for additional context
-   - Custom metrics from trace data
-   - Service dependency graphs
-   - Error rate tracking
+Error Attributes Added:
+- error.type: Exception class name
+- error.message: Full error message
+- http.status_code: HTTP response code
+- http.method: HTTP method (GET, POST, etc.)
+- http.url: Full request URL
+- device.id: Unique device identifier
+- device.os: Platform (android/ios/web)
+```
 
-## Benefits
+### 6. Double Fetch Prevention
 
-✅ **End-to-End Visibility**: Track requests from mobile app through backend
-✅ **Performance Analysis**: Identify bottlenecks in request flow
-✅ **Debugging**: Correlate logs and metrics by trace ID
-✅ **Distributed System Monitoring**: Understand service interactions
-✅ **Compliance**: Support for audit and compliance requirements
-✅ **Zero-Config**: Works out of the box with sensible defaults
-✅ **Standard Format**: W3C Trace Context ensures compatibility
+#### Problem Solved
+Original issue: `fetchLanding()` was called twice on app load
+- Once in ViewModel.init
+- Again when sampling was configured
+
+#### Solution
+- Move sampling initialization to app startup (`AppInitializer`)
+- Initialize BEFORE creating any ViewModels
+- Remove reload trigger from sampling callbacks
+- Single fetch with trace context available
+
+## Architecture Diagram
+
+```
+App Startup
+    ↓
+AppInitializer.initializeApp()
+    ├─ Set SamplingConfig(DEVELOPMENT)
+    ├─ Create Jaeger exporter
+    ├─ Create root span (traceFlags based on env)
+    └─ Store in SpanContextHolder
+    ↓
+MainActivity/MainViewController
+    ├─ Create LandingViewModel
+    ├─ ViewModel.init calls load()
+    └─ load() → fetchLanding() [SINGLE FETCH]
+    ↓
+HTTP Request (TracingPlugin)
+    ├─ Create child span
+    ├─ Inject traceparent header
+    ├─ Make request to server
+    └─ Receive response
+    ↓
+Response Handler
+    ├─ Status < 400 → SpanStatus.OK
+    ├─ Status >= 400 → SpanStatus.ERROR
+    └─ Export span (always if ERROR)
+    ↓
+Jaeger
+    ├─ Receive OTLP payload
+    ├─ Store trace with all spans
+    └─ Display in UI
+```
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `tracing/Span.kt` | Span model and SpanContextHolder |
+| `tracing/TracingProvider.kt` | Span lifecycle management |
+| `tracing/TracingPlugin.kt` | HTTP client integration |
+| `tracing/SpanExporter.kt` | Jaeger OTLP exporter |
+| `AppInitializer.kt` | App-level initialization |
+| `PlatformConfig.kt` | Jaeger endpoint configuration |
+| `viewmodel/BaseViewModel.kt` | Error recording integration |
+| `viewmodel/LandingViewModel.kt` | Error catching and reporting |
+| `data/UiRepository.kt` | HTTP response handling |
+| `network/HttpClientFactory.kt` | HTTP client setup |
+
+## Features Implemented
+
+### ✅ Automatic HTTP Tracing
+- Every request creates a span
+- Headers injected automatically
+- Span closed on response
+
+### ✅ Error Detection & Tracking
+- HTTP errors (>= 400) detected automatically
+- Error details captured (type, message)
+- Error spans marked with ERROR status
+
+### ✅ Forced Sampling for Errors
+- Error spans ALWAYS exported (regardless of sampling config)
+- Ensures error visibility in Jaeger even in production (1% sampling)
+
+### ✅ W3C Trace Context
+- Standard traceparent/tracestate headers
+- Compatible with all observability platforms
+- Enables backend integration
+
+### ✅ Environment-Based Sampling
+- Development: 100%
+- Staging: 20%
+- QA: 100%
+- Production: 1%
+
+### ✅ Zero Configuration
+- Works out of the box
+- Sensible defaults per environment
+- Single initialization call
+
+### ✅ Double Fetch Prevention
+- Sampling initialized before ViewModels
+- Single fetch on app load
+- Trace context available immediately
+
+## Trace Flow Example
+
+```
+[Client App]
+  Span: "GET /api/ui/landing" (traceId=abc123, spanId=def456)
+    Status: ERROR (HTTP 500)
+    Attributes:
+      - http.status_code: 500
+      - error.type: Exception
+      - error.message: HTTP 500: Internal Server Error...
+    ↓ [W3C Traceparent Header Sent]
+    
+[Server]
+  Extract: traceparent: 00-abc123-def456-01
+  Create child span with same traceId
+  Process request
+  Return response with traceparent
+    ↓
+    
+[Jaeger]
+  Receive OTLP payload
+  Display trace:
+    - Mobile app span (red - error)
+    - Server spans (children of app span)
+    - Full timeline and latency
+```
+
+## Jaeger Integration
+
+### Setup
+```bash
+docker run -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one
+```
+
+### View Traces
+1. Open `http://localhost:16686`
+2. Select service: `sdui-mobile-client`
+3. View errors (red spans) and their details
+
+### Endpoint Configuration
+- **Android emulator**: `http://10.0.2.2:4318/v1/traces`
+- **iOS simulator**: `http://localhost:4318/v1/traces`
+- **Web**: `http://localhost:4318/v1/traces`
 
 ## Testing
 
-All tests passing with 100% code coverage for tracing components:
+### Manual Testing
+1. Start Jaeger: `docker-compose up jaeger`
+2. Run app
+3. Make request that returns 500
+4. Check Jaeger UI for red error span
 
-```bash
-./gradlew :composeApp:testDebugUnitTest :composeApp:testReleaseUnitTest
-# ✅ BUILD SUCCESSFUL
+### Expected Output
 ```
+🔍 [TRACE] Sampling configured - Environment: DEVELOPMENT, IsQaUser: false
+🔍 [TRACE] Initial Span set - TraceID: abc123..., Sampled: true
+
+🔍 [SPAN] Started: GET http://... (spanId)
+🔍 [SPAN] Ended: GET ... - 755ms - Status: ERROR
+📤 [JAEGER] Sending payload to http://10.0.2.2:4318/v1/traces
+✅ [JAEGER] Exported 1/1 sampled spans
+```
+
+## Performance Impact
+
+- **Minimal Overhead**: Span creation/closing is lightweight
+- **Async Export**: OTLP export in background coroutine
+- **Memory**: Spans kept until exported, then cleaned up
+- **Sampling**: Reduces load on Jaeger in production (1%)
 
 ## Documentation
 
+- **CLAUDE.md**: Quick start and basic setup
 - **TRACING.md**: Complete technical documentation
-- **TRACING_EXAMPLES.md**: Practical integration examples
-- **Inline comments**: Key decisions documented in code
+- Inline comments explain key decisions
 
-## Compatibility
+## Benefits
 
-- ✅ Android (API 24+)
-- ✅ iOS (arm64 + simulator)
-- ✅ Web (planned for future phases)
-- ✅ All Compose Multiplatform targets
+✅ **Full Observability**: See all HTTP requests and errors  
+✅ **Error Visibility**: Error spans always exported to Jaeger  
+✅ **Zero Config**: Works out of the box  
+✅ **Standards Compliant**: W3C Trace Context  
+✅ **Multi-Platform**: Works on Android, iOS, Web  
+✅ **Backend Integration**: Ready for server-side traces  
+
+## Limitations & Future Work
+
+- Current: Client-only tracing (mobile app)
+- Future: Server-side span creation with same traceId
+- Future: Cross-service correlation
+- Future: Custom metrics and attributes
+
+## Conclusion
+
+A production-ready distributed tracing system with:
+- Automatic HTTP request tracking
+- Error detection and monitoring
+- Forced sampling for errors (always exported)
+- W3C standard trace context propagation
+- Integration with Jaeger for visualization
+- Zero configuration required
