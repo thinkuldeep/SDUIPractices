@@ -33,9 +33,9 @@ object AppInitializer {
         val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.exportClient, scope)
         TracingProvider.initialize(exporter, scope)
 
-        val initialSpan = Span.create(traceFlags = "01")
+        val initialSpan = Span.create()
         SpanContextHolder.set(initialSpan)
-        println("🔍 [TRACE] Initial Span set - TraceID: ${initialSpan.traceId}, Sampled: true")
+        println("🔍 [TRACE] Initial Span set - TraceID: ${initialSpan.traceId}")
 
         initialized = true
     }
