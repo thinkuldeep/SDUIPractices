@@ -58,9 +58,6 @@ class LandingViewModel(
         }
     }
 
-    override fun onSamplingConfigured() {
-        load()
-    }
 
     private fun applyFeatureFilter(component: UiComponent): UiComponent {
         return when (component) {

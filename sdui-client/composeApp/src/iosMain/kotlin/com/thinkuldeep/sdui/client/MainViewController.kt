@@ -10,16 +10,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.thinkuldeep.sdui.client.tracing.Environment
 import com.thinkuldeep.sdui.client.tracing.Span
 import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
-
 fun MainViewController() = ComposeUIViewController {
-
     val vm = remember {
-        LandingViewModel().apply {
-            configureSampling(Environment.STAGING)
-        }
+        AppInitializer.initializeApp()
+        LandingViewModel()
     }
 
     val state = vm.uiState.collectAsState()

@@ -18,21 +18,17 @@ import com.thinkuldeep.sdui.client.tracing.OpenTelemetryInit
 import com.thinkuldeep.sdui.client.tracing.Span
 import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
 import com.thinkuldeep.sdui.client.viewmodel.LandingViewModel
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize OpenTelemetry (currently disabled due to dependency issues)
-        // TODO: Fix OTEL initialization and re-enable
-        // OpenTelemetryInit.initialize(this)
+        // Initialize sampling at app startup (before any page loads)
+        AppInitializer.initializeApp()
 
         setContent {
             // Create ViewModel inside setContent for proper lifecycle management
             val viewModel = remember {
-                LandingViewModel().apply {
-                    configureSampling(Environment.DEVELOPMENT)
-                }
+                LandingViewModel()
             }
 
             val state = viewModel.uiState.collectAsState()

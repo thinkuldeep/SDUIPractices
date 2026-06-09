@@ -27,32 +27,6 @@ abstract class BaseViewModel(dispatcher: CoroutineDispatcher = Dispatchers.Defau
         println("🔍 [TRACE] Span set - TraceID: ${span.traceId}")
     }
 
-    fun configureSampling(config: SamplingConfig) {
-        SamplingConfig.setCurrent(config)
-        println("🔍 [TRACE] Sampling configured - Environment: ${config.environment}, IsQaUser: ${config.isQaUser}")
-
-        val jaegerConfig = JaegerExporterConfig(
-            endpoint = PlatformConfig.jaegerEndpoint,
-            serviceName = "sdui-mobile-client"
-        )
-        val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.exportClient, scope)
-        TracingProvider.initialize(exporter, scope)
-
-        if (_span.value == null) {
-            val newSpan = Span.create()
-            SpanContextHolder.set(newSpan)
-            _span.value = newSpan
-            onSamplingConfigured()
-        }
-    }
-
-    fun configureSampling(environment: Environment, isQaUser: Boolean = false) {
-        val config = SamplingConfig(environment = environment, isQaUser = isQaUser)
-        configureSampling(config)
-    }
-
-    protected open fun onSamplingConfigured() {}
-
     protected fun recordError(error: Throwable) {
         val currentSpan = _span.value
         if (currentSpan != null) {
