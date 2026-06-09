@@ -1,39 +1,27 @@
 package com.thinkuldeep.sdui.client.viewmodel
 
-import com.thinkuldeep.sdui.client.PlatformConfig
 import com.thinkuldeep.sdui.client.data.UiDataSource
 import com.thinkuldeep.sdui.client.data.UiRepository
 import com.thinkuldeep.sdui.client.model.UiComponent
-import com.thinkuldeep.sdui.client.network.HttpClientFactory
 import com.thinkuldeep.sdui.client.threading.threadSafeExecute
-import com.thinkuldeep.sdui.client.tracing.Environment
-import com.thinkuldeep.sdui.client.tracing.JaegerExporterConfig
-import com.thinkuldeep.sdui.client.tracing.JaegerSpanExporter
-import com.thinkuldeep.sdui.client.tracing.SamplingConfig
-import com.thinkuldeep.sdui.client.tracing.Span
-import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
-import com.thinkuldeep.sdui.client.tracing.TracingProvider
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class LandingViewModel(
     private val repository: UiDataSource = UiRepository(),
     dispatcher: CoroutineDispatcher = Dispatchers.Default
-) {
-    private val scope = CoroutineScope(dispatcher)
+) : BaseViewModel(dispatcher) {
     private val _uiState = MutableStateFlow<UiComponent?>(null)
     val uiState: StateFlow<UiComponent?> = _uiState
-
-    private val _span = MutableStateFlow<Span?>(null)
-    val span: StateFlow<Span?> = _span
 
     private val featureIndexes = mutableMapOf<String, Int>()
     private val featureIndexLock = Any()
     private var originalTree: UiComponent? = null
 
     init {
-        println("🔥 ViewModel INIT")
         load()
     }
 
@@ -71,57 +59,8 @@ class LandingViewModel(
         }
     }
 
-    fun setSpan(traceparent: String, tracestate: String = "") {
-        val span = Span(
-            traceId = extractTraceId(traceparent),
-            spanId = extractSpanId(traceparent),
-            traceState = tracestate
-        )
-        SpanContextHolder.set(span)
-        _span.value = span
-        println("🔍 [TRACE] Span set - TraceID: ${span.traceId}")
-    }
-
-    fun setSpan(span: Span) {
-        SpanContextHolder.set(span)
-        _span.value = span
-        println("🔍 [TRACE] Span set - TraceID: ${span.traceId}")
-    }
-
-    fun getCurrentSpan(): Span? = _span.value
-
-    private fun extractTraceId(traceparent: String): String {
-        val parts = traceparent.split("-")
-        return if (parts.size >= 2) parts[1] else ""
-    }
-
-    private fun extractSpanId(traceparent: String): String {
-        val parts = traceparent.split("-")
-        return if (parts.size >= 3) parts[2] else ""
-    }
-
-    fun configureSampling(config: SamplingConfig) {
-        SamplingConfig.setCurrent(config)
-        println("🔍 [TRACE] Sampling configured - Environment: ${config.environment}, IsQaUser: ${config.isQaUser}")
-
-        val jaegerConfig = JaegerExporterConfig(
-            endpoint = PlatformConfig.jaegerEndpoint,
-            serviceName = "sdui-mobile-client"
-        )
-        val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.exportClient, scope)
-        TracingProvider.initialize(exporter, scope)
-
-        if (_span.value == null) {
-            val newSpan = Span.create()
-            SpanContextHolder.set(newSpan)
-            _span.value = newSpan
-            load()
-        }
-    }
-
-    fun configureSampling(environment: Environment, isQaUser: Boolean = false) {
-        val config = SamplingConfig(environment = environment, isQaUser = isQaUser)
-        configureSampling(config)
+    override fun onSamplingConfigured() {
+        load()
     }
 
     private fun applyFeatureFilter(component: UiComponent): UiComponent {
