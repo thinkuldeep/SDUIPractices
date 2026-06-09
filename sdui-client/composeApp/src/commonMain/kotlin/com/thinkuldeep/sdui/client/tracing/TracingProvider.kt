@@ -60,12 +60,32 @@ object TracingProvider {
         threadSafeExecute(lock) {
             println("🔍 [ERROR] ${error::class.simpleName}: ${error.message}")
 
-            // Record error as attributes on parent span
-            val attributes = parentSpan.attributes.toMutableMap()
-            attributes["error.type"] = error::class.simpleName ?: "Unknown"
-            attributes["error.message"] = error.message ?: "No message"
-            parentSpan.attributes = attributes
-            parentSpan.status = SpanStatus.ERROR
+            // Create error span as child of parent
+            val errorSpan = Span.create(
+                traceId = parentSpan.traceId,
+                spanId = null,
+                parentSpanId = parentSpan.spanId,
+                name = "error",
+                traceState = parentSpan.traceState,
+                traceFlags = parentSpan.traceFlags
+            )
+            errorSpan.endTime = currentTimeMillis()
+            errorSpan.status = SpanStatus.ERROR
+
+            val attributes = mutableMapOf(
+                "error.type" to (error::class.simpleName ?: "Unknown"),
+                "error.message" to (error.message ?: "No message")
+            )
+            errorSpan.attributes = attributes
+
+            completedSpans.add(errorSpan)
+
+            // Export error span
+            scope?.let { s ->
+                s.launch {
+                    exporter?.export(listOf(errorSpan))
+                }
+            }
         }
     }
 
