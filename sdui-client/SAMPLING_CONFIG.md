@@ -1,357 +1,420 @@
 # Sampling Configuration Guide
 
-This guide explains how to configure trace sampling based on your deployment environment and user types.
+This guide explains how to configure trace sampling based on your deployment environment.
 
 ## Quick Start
 
-### Default Behavior
-- **Development**: 100% sampling (useful for local debugging)
-- **Production**: 1% sampling (cost-effective high-volume production)
-- **Staging**: 20% sampling (pre-production validation)
-- **QA**: 100% sampling (complete trace visibility for testing)
-
-### Basic Configuration
-
+### Default Behavior (Development)
 ```kotlin
-// In your Activity/Fragment initialization
-val viewModel = LandingViewModel()
-
-// Configure for your environment
-val environment = BuildConfig.ENVIRONMENT // "production", "staging", "qa", "development"
-viewModel.configureSampling(
-    environment = parseEnvironment(environment),
-    isQaUser = getCurrentUser()?.isQaUser ?: false
-)
+// In MainActivity or app entry point
+AppInitializer.initializeApp()  // Uses DEVELOPMENT environment, 100% sampling
 ```
 
-## Environment-Specific Examples
+**Default Sampling Rates:**
+- **Development**: 100% (local debugging)
+- **Staging**: 20% (pre-production validation)
+- **QA**: 100% (complete test visibility)
+- **Production**: 1% (cost-effective)
+
+### For Other Environments
+```kotlin
+// Staging
+AppInitializer.initializeSampling(Environment.STAGING)
+
+// QA
+AppInitializer.initializeSampling(Environment.QA)
+
+// Production
+AppInitializer.initializeSampling(Environment.PRODUCTION)
+```
+
+**Important**: Call `AppInitializer` at app startup, BEFORE creating any ViewModels.
+
+## Environment-Specific Configuration
 
 ### Production Environment (1% Sampling)
 
-**Goal**: Minimize costs while maintaining visibility for important operations.
+**Goal**: Minimize costs while maintaining error visibility.
 
 ```kotlin
+// MainActivity.kt
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        val viewModel = LandingViewModel()
-        viewModel.configureSampling(Environment.PRODUCTION)
-        
-        // Result: ~1% of requests traced
-        // Cost: Minimal, ~1 trace per 100 requests
-        // Visibility: Statistically representative
+
+        // Initialize tracing for production
+        AppInitializer.initializeSampling(Environment.PRODUCTION)
+
+        setContent {
+            val viewModel = remember { LandingViewModel() }
+            // ... rest of UI
+        }
     }
 }
 ```
 
-**Sampling Behavior**:
-- 99% of requests: `traceFlags = "00"` (not sampled)
-- 1% of requests: `traceFlags = "01"` (sampled)
-- All requests send `traceparent` header
+**Result**:
+- 1% of requests traced (traceFlags="01")
+- 99% non-sampled (traceFlags="00")
+- ALL errors exported (forced sampling)
+- Cost: ~$0.0001/month for 1M requests/day
+
+**Log Output**:
+```
+🔍 [TRACE] Sampling configured - Environment: PRODUCTION, IsQaUser: false
+🔍 [TRACE] Initial Span set - TraceID: 4bf92f3577b34da6a, Sampled: false
+```
 
 ### Staging Environment (20% Sampling)
 
-**Goal**: Pre-production validation with reasonable cost.
+**Goal**: Pre-production validation with good coverage.
 
 ```kotlin
-class MainActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
-        val viewModel = LandingViewModel()
-        viewModel.configureSampling(Environment.STAGING)
-        
-        // Result: ~20% of requests traced
-        // Cost: Moderate, ~1 trace per 5 requests
-        // Visibility: Good coverage for testing
-    }
-}
+AppInitializer.initializeSampling(Environment.STAGING)
 ```
 
-**Sampling Behavior**:
-- 80% of requests: `traceFlags = "00"` (not sampled)
-- 20% of requests: `traceFlags = "01"` (sampled)
-- All requests send `traceparent` header
+**Result**:
+- 20% of requests traced (1 in 5)
+- Good coverage for testing
+- Cost: ~$0.006/month for 1M requests/day
 
 ### QA Environment (100% Sampling)
 
-**Goal**: Full visibility for regression testing and validation.
+**Goal**: Full visibility for regression testing.
 
 ```kotlin
-class MainActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
-        val viewModel = LandingViewModel()
-        viewModel.configureSampling(Environment.QA)
-        
-        // Result: 100% of requests traced
-        // Cost: Highest, every request generates a trace
-        // Visibility: Complete, every operation visible
-    }
-}
+AppInitializer.initializeSampling(Environment.QA)
 ```
 
-**Sampling Behavior**:
-- All requests: `traceFlags = "01"` (sampled)
-- All requests send `traceparent` header
-
-## Special Cases
-
-### QA Users in Production
-
-**Goal**: Track specific users in production for debugging and support.
-
-```kotlin
-class MainActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
-        val viewModel = LandingViewModel()
-        val currentUser = getCurrentUser()
-        
-        viewModel.configureSampling(
-            environment = Environment.PRODUCTION,
-            isQaUser = currentUser?.isQaUser ?: false
-        )
-        
-        // Result:
-        // - Regular users: 1% sampling
-        // - QA users: 100% sampling
-    }
-}
-```
-
-**QA User Detection**:
-```kotlin
-fun isQaUser(user: User?): Boolean {
-    return user?.email?.endsWith("@qa-team.com") ?: false ||
-           user?.id in qa_user_ids ||
-           user?.tags?.contains("qa-user") ?: false
-}
-```
+**Result**:
+- 100% of requests traced
+- Complete visibility
+- Cost: ~$0.03/month for 1M requests/day
 
 ### Development Environment (100% Sampling)
 
-**Goal**: Maximum visibility for local development and debugging.
+**Goal**: Maximum visibility for local debugging (default).
 
 ```kotlin
-// In your debug build variant
-viewModel.configureSampling(Environment.DEVELOPMENT)
+AppInitializer.initializeApp()  // Uses DEVELOPMENT
+```
 
-// Result: 100% sampling, all requests traced
-// Use case: Local debugging, understanding request flows
+**Result**:
+- 100% sampling
+- See every request in Jaeger
+- Unlimited cost (local only)
+
+## Error Sampling (Special Behavior)
+
+### Key Feature: Errors Always Exported
+
+Regardless of environment, ALL error spans are exported to Jaeger:
+
+```
+Production: 1% sampling
+  ├─ Successful request (200) → 99% chance NOT exported
+  ├─ Successful request (200) → 1% chance exported
+  ├─ Error request (500) → ALWAYS exported (forced sampling!)
+  └─ Error request (500) → ALWAYS exported
+```
+
+This ensures complete error visibility even in production.
+
+### HTTP Status → Sampling Decision
+
+```
+HTTP Status < 400 → Respects environment sampling
+  Development: Always sampled
+  Staging: 20% sampled
+  Production: 1% sampled
+
+HTTP Status >= 400 → ALWAYS sampled (forced)
+  Development: Always sampled
+  Staging: Always sampled  
+  Production: Always sampled (override 1% rule!)
 ```
 
 ## Advanced Configuration
 
-### Dynamic Sampling Based on User Properties
-
-```kotlin
-class UserService(private val viewModel: LandingViewModel) {
-    fun configureTracingForUser(user: User) {
-        val environment = getEnvironment()
-        val isQaUser = isQaUser(user)
-        val isBetaTester = user.tags?.contains("beta") ?: false
-        val isPowerUser = user.requestCount > 10000
-        
-        // Beta testers and power users get higher sampling
-        val adjustedConfig = if (isBetaTester || isPowerUser) {
-            SamplingConfig(
-                environment = environment,
-                isQaUser = true // Treat as QA for higher sampling
-            )
-        } else {
-            SamplingConfig(
-                environment = environment,
-                isQaUser = isQaUser
-            )
-        }
-        
-        viewModel.configureSampling(adjustedConfig)
-    }
-}
-```
-
-### Environment Detection from BuildConfig
+### BuildConfig-Based Environment
 
 ```kotlin
 fun getSamplingEnvironment(): Environment {
     return when {
-        BuildConfig.BUILD_TYPE == "release" && BuildConfig.FLAVOR == "production" -> 
+        BuildConfig.BUILD_TYPE == "release" && BuildConfig.FLAVOR == "prod" ->
             Environment.PRODUCTION
-        BuildConfig.BUILD_TYPE == "release" && BuildConfig.FLAVOR == "staging" -> 
+        BuildConfig.BUILD_TYPE == "release" && BuildConfig.FLAVOR == "staging" ->
             Environment.STAGING
-        BuildConfig.BUILD_TYPE == "release" && BuildConfig.FLAVOR == "qa" -> 
-            Environment.QA
-        else -> Environment.DEVELOPMENT
+        BuildConfig.BUILD_TYPE == "debug" ->
+            Environment.DEVELOPMENT
+        else -> Environment.QA
     }
 }
 
 // Usage
-val viewModel = LandingViewModel()
-viewModel.configureSampling(getSamplingEnvironment())
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    AppInitializer.initializeSampling(getSamplingEnvironment())
+    // ...
+}
 ```
 
-### Configuration with Remote Settings
+### Remote Configuration
 
 ```kotlin
-// Fetch sampling configuration from remote settings
-suspend fun configureSamplingFromRemote(viewModel: LandingViewModel) {
-    val remoteConfig = fetchRemoteConfig() // e.g., Firebase Remote Config
+suspend fun configureSamplingFromRemote() {
+    val remoteConfig = fetchRemoteConfig()  // Firebase, etc.
     
-    val environment = when (remoteConfig.getString("trace_environment")) {
-        "production" -> Environment.PRODUCTION
+    val environment = when (remoteConfig.getString("environment")) {
+        "prod" -> Environment.PRODUCTION
         "staging" -> Environment.STAGING
         "qa" -> Environment.QA
         else -> Environment.DEVELOPMENT
     }
     
-    val sampleRate = remoteConfig.getDouble("trace_sample_rate") // 0.0 - 1.0
-    
-    // Note: This overrides the default sampling percentages
-    val config = SamplingConfig(
-        environment = environment,
-        isQaUser = remoteConfig.getBoolean("is_qa_user")
-    )
-    
-    viewModel.configureSampling(config)
-    
-    logConfigured(environment, remoteConfig.getString("trace_sample_rate"))
+    AppInitializer.initializeSampling(environment)
 }
 ```
 
-## Backend Integration
+## Trace Propagation
 
-### Server-Side Sampling Decision
+### W3C Trace Context Header
 
-Even though the client sends sampling decisions, the server can override:
+Every HTTP request includes:
 
-```kotlin
-// Server-side (Spring Boot example)
-@GetMapping("/api/ui/landing")
-fun getLanding(
-    @RequestHeader(value = "traceparent", required = false) traceparent: String?,
-    @RequestHeader(value = "tracestate", required = false) tracestate: String?,
-    @RequestAttribute(value = "clientIp", required = false) clientIp: String?
-): ResponseEntity<UiComponent> {
-    val context = traceContextPropagator.extractContext(traceparent, tracestate)
-    
-    // Override sampling for important clients
-    val shouldSample = if (isImportantClient(clientIp)) {
-        true // Always sample important clients
-    } else {
-        context?.isSampled ?: true // Use client's decision
-    }
-    
-    // Create server span with decision
-    val serverSpan = tracer.spanBuilder("GET /api/ui/landing")
-        .setSampler(shouldSample)
-        .startSpan()
-    
-    return serverSpan.use {
-        ResponseEntity.ok(buildLandingPage())
-    }
-}
+```http
+traceparent: 00-<traceId>-<spanId>-<traceFlags>
+tracestate: device-id=<uuid>,device-os=<platform>
 ```
 
-### Tail Sampling Strategy
-
-Backend can implement tail sampling to capture errors even if not sampled:
-
-```kotlin
-// Server-side tail sampling
-fun shouldSampleBasedOnOutcome(span: Span, error: Throwable?): Boolean {
-    return when {
-        error != null -> true // Always sample errors
-        span.durationMs > 5000 -> true // Sample slow requests
-        span.statusCode >= 500 -> true // Sample server errors
-        span.statusCode == 404 -> false // Don't sample 404s
-        else -> span.isSampled // Use original decision
-    }
-}
+**Example (Production)**:
+```
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00
+             ├─ version (00)
+             ├─ traceId (32 chars)
+             ├─ spanId (16 chars)
+             └─ traceFlags (00=not sampled, 01=sampled)
 ```
 
-## Monitoring & Observability
+**Key Point**: ALL requests send traceparent headers, even non-sampled ones. Backend can:
+- Correlate requests across services
+- Make independent sampling decisions
+- Implement tail sampling for errors
 
-### Log Sampling Configuration
+## Span Lifecycle
+
+### Sampling Decision
+
+```
+App Startup
+    ↓
+AppInitializer.initializeSampling(environment)
+    ├─ Set SamplingConfig
+    ├─ Initialize Jaeger exporter
+    └─ Create root span (respects environment sampling)
+    
+HTTP Request
+    ├─ Create child span
+    ├─ Inherit parent's sampling decision
+    └─ If error (>= 400): Force traceFlags="01"
+    
+Export Decision
+    ├─ If sampled (traceFlags="01"): Export
+    ├─ If error status: Export (always)
+    └─ Otherwise: Skip export
+```
+
+## Monitoring
+
+### Check Sampling Configuration
 
 ```kotlin
-val viewModel = LandingViewModel()
-viewModel.configureSampling(Environment.PRODUCTION)
+// During app initialization
+val span = SpanContextHolder.current()
+println("Root Span Sampled: ${span?.isSampled}")
 
 // Logs:
-// 🔍 [TRACE] Sampling configured - Environment: PRODUCTION, IsQaUser: false, SampleRate: 1%
+// 🔍 [TRACE] Initial Span set - TraceID: 4bf92f3..., Sampled: true
 ```
 
-### Check Current Sampling Status
+### Log Analysis
 
-```kotlin
-val context = viewModel.getCurrentTraceContext()
-println("Sampled: ${context?.isSampled}")
-println("Trace ID: ${context?.traceId}")
-println("Sample Rate: ${viewModel.getCurrentSampleRate()}")
+```bash
+# Count sampled vs non-sampled spans in production
+grep "Sampled: true" app.log | wc -l   # Should be ~1%
+grep "Sampled: false" app.log | wc -l  # Should be ~99%
 ```
 
 ### Metrics
 
-Track sampling decisions for monitoring:
+Track actual sampling in production:
 
-```kotlin
-class TracingMetrics {
-    private val sampledRequestsCounter = Counter.builder("trace.sampled.requests")
-        .description("Number of sampled requests")
-        .build()
-    
-    private val totalRequestsCounter = Counter.builder("trace.total.requests")
-        .description("Total number of requests")
-        .build()
-    
-    fun recordRequest(isSampled: Boolean) {
-        totalRequestsCounter.increment()
-        if (isSampled) {
-            sampledRequestsCounter.increment()
-        }
-    }
-}
+```
+Sampled requests (traceFlags=01):  ~1% ✓
+Non-sampled requests (traceFlags=00): ~99% ✓
+Error requests exported: 100% ✓
 ```
 
 ## Cost Analysis
 
-### Estimated Trace Costs
+### Monthly Cost Estimates
 
-Assuming:
-- 1 million requests/day
-- Average trace storage: 1 KB per trace
-- Storage cost: $0.01 per GB/month
+For **1 Million Requests/Day** (30M/month):
 
-| Environment | Sample Rate | Traces/Day | Storage/Month | Cost/Month |
+| Environment | Rate | Traces/Day | Storage/Mo | Cost/Mo |
 |---|---|---|---|---|
-| Production | 1% | 10,000 | 300 MB | $0.003 |
-| Staging | 20% | 200,000 | 6 GB | $0.06 |
-| QA | 100% | 1,000,000 | 30 GB | $0.30 |
-| Development | 100% | Variable | Variable | $0.01-0.50 |
+| Development | 100% | 1,000,000 | 1 GB | $0.01 |
+| Staging | 20% | 200,000 | 200 MB | $0.002 |
+| QA | 100% | 1,000,000 | 1 GB | $0.01 |
+| Production | 1% + Errors | ~10,500 | ~11 MB | $0.0001 |
+
+**Key**: Production with forced error sampling is extremely cost-effective.
+
+### Cost Reduction
+
+Increase production traffic from 1M to 10M requests/day:
+
+| Environment | Requests/Day | Traces/Day | Cost/Mo |
+|---|---|---|---|
+| 1% sampling | 10,000,000 | 100,000 | $0.001 |
+| + All errors | 10,000,000 | ~105,000 | $0.001 |
+
+Even at 10× traffic, production costs ~$0.001/month!
+
+## Backend Integration
+
+### Extract Trace Context
+
+Server can extract and use client's sampling decision:
+
+```java
+@GetMapping("/api/ui/landing")
+public ResponseEntity<?> getLanding(
+    @RequestHeader(value = "traceparent", required = false) String traceparent
+) {
+    // Extract trace context
+    TraceContext context = traceContextPropagator.extractContext(traceparent);
+    
+    // Use client's sampling decision
+    boolean shouldSample = context != null && context.isSampled();
+    
+    // Or make independent decision (tail sampling)
+    boolean hasError = /* check something */;
+    if (hasError) {
+        shouldSample = true;  // Always sample errors
+    }
+    
+    // Create server span with decision
+    Span serverSpan = tracer.spanBuilder("GET /api/ui/landing")
+        .setSampled(shouldSample)
+        .startSpan();
+    
+    return serverSpan.makeCurrent().wrap(() -> {
+        // Process request
+        return ResponseEntity.ok(buildLandingPage());
+    });
+}
+```
+
+### Tail Sampling
+
+Backend implements tail sampling to capture important requests:
+
+```java
+public boolean shouldSampleBasedOnOutcome(RequestContext context) {
+    return context.getHttpStatus() >= 500 ||      // Server errors
+           context.getDurationMs() > 5000 ||      // Slow requests
+           context.hasException() ||               // Any exception
+           context.isSampled();                   // Client's decision
+}
+```
 
 ## Best Practices
 
-1. **Always send headers**: Even non-sampled requests send `traceparent` header
-2. **Backend decision**: Let backend make tail sampling decisions
-3. **QA users**: Always sample QA/test users for better debugging
-4. **Error tracking**: Server should always sample errors
-5. **Cost monitoring**: Track trace storage and costs regularly
-6. **Regular reviews**: Update sampling rates based on actual usage and costs
+✅ **Initialize Early**
+- Call `AppInitializer` at app startup
+- Before creating any ViewModels
+- So trace context is available immediately
+
+✅ **Use Environment Detection**
+- Detect from BuildConfig/Flavor
+- Or from remote config
+- Not hardcoded in app
+
+✅ **Monitor Errors**
+- All errors exported (forced sampling)
+- Check Jaeger for error visibility
+- Set up alerts on error spikes
+
+✅ **Cost Management**
+- Start with 1% sampling in production
+- Increase if budget allows
+- Use Jaeger storage metrics
+
+✅ **Backend Cooperation**
+- Extract traceparent headers
+- Propagate to downstream services
+- Implement tail sampling for errors
 
 ## Troubleshooting
 
-### Issue: Not enough traces in production
-**Solution**: Increase production sampling rate if cost allows, or use QA user mode for manual testing
+### No traces in Jaeger
 
-### Issue: Too many traces (high costs)
-**Solution**: Decrease sampling rate, implement tail sampling on backend for errors only
+**Check**: Is sampling configured?
+```
+🔍 [TRACE] Sampling configured - Environment: PRODUCTION
+```
 
-### Issue: QA user not being sampled
-**Solution**: Check `isQaUser` flag is being set correctly, verify configuration is called before API calls
+**Check**: Is Jaeger running?
+```bash
+curl http://localhost:4318/v1/traces
+# Should return (not error)
+```
 
-### Issue: Inconsistent sampling across environments
-**Solution**: Verify `configureSampling()` is called with correct environment, check `BuildConfig` values
+### Traces not showing in production (1% sampling)
+
+**Note**: This is expected!
+- 99% of successful requests not traced
+- Only errors always traced
+- Check Jaeger for error filters
+
+### Too many traces (high cost)
+
+**Solution**: Reduce sampling rate
+```kotlin
+AppInitializer.initializeSampling(Environment.PRODUCTION)  // 1%
+```
+
+Or use staging for validation:
+```kotlin
+AppInitializer.initializeSampling(Environment.STAGING)  // 20%
+```
+
+### Wrong environment selected
+
+**Verify**: BuildConfig is correct
+```kotlin
+println(BuildConfig.FLAVOR)      // Should match environment
+println(BuildConfig.BUILD_TYPE)  // release vs debug
+```
+
+## Summary
+
+✅ **One-Time Setup**
+- Call `AppInitializer.initializeSampling(environment)` at app startup
+- Before creating any ViewModels
+
+✅ **Automatic Sampling**
+- Environment determines sampling rate
+- Error spans always exported (forced)
+- W3C headers sent to all requests
+
+✅ **Cost Effective**
+- Production: 1% sampling = minimal cost
+- Errors: Always visible = full error tracking
+- Backend: Can override decisions
+
+✅ **Production Ready**
+- Works out of the box
+- Sensible defaults per environment
+- Jaeger integration ready
