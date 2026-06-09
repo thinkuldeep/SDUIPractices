@@ -33,9 +33,10 @@ object AppInitializer {
         val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.exportClient, scope)
         TracingProvider.initialize(exporter, scope)
 
+        // Create initial span after sampling config is set - respects sampling decision
         val initialSpan = Span.create()
         SpanContextHolder.set(initialSpan)
-        println("🔍 [TRACE] Initial Span set - TraceID: ${initialSpan.traceId}")
+        println("🔍 [TRACE] Initial Span set - TraceID: ${initialSpan.traceId}, Sampled: ${initialSpan.isSampled}")
 
         initialized = true
     }
