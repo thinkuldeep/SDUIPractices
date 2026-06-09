@@ -67,3 +67,39 @@ Mirrors the server model. Uses Kotlinx Serialization with `@SerialName` for each
 - `classDiscriminator = "type"` (matches server's Jackson discriminator)
 - `ignoreUnknownKeys = true` (forward compatibility)
 - Polymorphic serializers registered for `UiComponent`
+- `TracingPlugin` installed for automatic span tracking and error monitoring
+
+## Tracing & Error Tracking
+
+The app includes built-in distributed tracing with error monitoring. See [TRACING.md](TRACING.md) for details.
+
+### Quick Start
+
+1. **Initialization** - Happens automatically in `AppInitializer.initializeApp()`
+   - Creates root span with unique traceId
+   - Configures Jaeger exporter
+   - Sets sampling configuration
+
+2. **HTTP Requests** - Automatically traced via `TracingPlugin`
+   - Each request creates a child span
+   - Span marked as ERROR if HTTP status >= 400
+   - Error details added as attributes
+
+3. **Error Export** - Spans with errors always exported to Jaeger
+   - Even if sampling is disabled
+   - Complete with error.type and error.message
+
+### Configuration
+
+```kotlin
+// Automatic setup at app startup
+AppInitializer.initializeApp()  // Uses DEVELOPMENT environment by default
+```
+
+### Jaeger Endpoint
+
+- **Android emulator**: `http://10.0.2.2:4318/v1/traces` (OTLP protocol)
+- **iOS simulator**: `http://localhost:4318/v1/traces`
+- **Web**: `http://localhost:4318/v1/traces`
+
+See [TRACING.md](TRACING.md) for environment setup and Jaeger UI access.
