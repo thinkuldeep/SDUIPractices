@@ -9,7 +9,6 @@ object TracingProvider {
     private var currentSpan: Span? = null
     private val spanStack = mutableListOf<Span>()
     private val completedSpans = mutableListOf<Span>()
-    private val exportedSpans = mutableSetOf<String>()
     private var exporter: SpanExporter? = null
     private var scope: CoroutineScope? = null
 
@@ -67,23 +66,12 @@ object TracingProvider {
             attributes["error.message"] = error.message ?: "No message"
             parentSpan.attributes = attributes
             parentSpan.status = SpanStatus.ERROR
-
-            // If span wasn't exported yet (was skipped due to not sampled), export now because of error
-            if (parentSpan.spanId !in exportedSpans) {
-                println("🔍 [SPAN] Exporting previously skipped span due to error: ${parentSpan.name}")
-                scope?.let { s ->
-                    s.launch {
-                        exporter?.export(listOf(parentSpan))
-                    }
-                }
-            }
         }
     }
 
     private fun exportIfSampled(span: Span) {
         val shouldExport = span.isSampled || span.status == SpanStatus.ERROR
         if (shouldExport) {
-            exportedSpans.add(span.spanId)
             scope?.let { s ->
                 s.launch {
                     exporter?.export(listOf(span))
