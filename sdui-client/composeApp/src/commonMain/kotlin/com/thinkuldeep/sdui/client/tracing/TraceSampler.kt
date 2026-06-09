@@ -3,10 +3,7 @@ package com.thinkuldeep.sdui.client.tracing
 import kotlin.random.Random
 
 enum class Environment {
-    PRODUCTION,
-    STAGING,
-    QA,
-    DEVELOPMENT
+    PRODUCTION, STAGING, QA, DEVELOPMENT
 }
 
 data class SamplingConfig(
@@ -36,10 +33,4 @@ data class SamplingConfig(
 
         fun getTraceFlags(): String = instance.getTraceFlags()
     }
-}
-
-class TraceSampler(private val config: SamplingConfig = SamplingConfig()) {
-    fun shouldSample(): Boolean = config.shouldSample()
-
-    fun getTraceFlags(): String = config.getTraceFlags()
 }
