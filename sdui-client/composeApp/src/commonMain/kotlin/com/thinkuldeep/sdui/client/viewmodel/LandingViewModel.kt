@@ -102,18 +102,15 @@ class LandingViewModel(
 
     fun configureSampling(config: SamplingConfig) {
         SamplingConfig.setCurrent(config)
-        println("🔍 [TRACE] Sampling configured - Environment: ${config.environment}, IsQaUser: ${config.isQaUser}, SampleRate: ${getSampleRateForEnvironment(config.environment)}")
+        println("🔍 [TRACE] Sampling configured - Environment: ${config.environment}, IsQaUser: ${config.isQaUser}")
 
-        // Initialize tracing provider with Jaeger exporter
         val jaegerConfig = JaegerExporterConfig(
             endpoint = PlatformConfig.jaegerEndpoint,
             serviceName = "sdui-mobile-client"
         )
-        // Use exportClient (no tracing) to avoid infinite loops from export requests
         val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.exportClient, scope)
         TracingProvider.initialize(exporter, scope)
 
-        // Initialize span and load after sampling is configured
         if (_span.value == null) {
             val newSpan = Span.create()
             SpanContextHolder.set(newSpan)
@@ -125,13 +122,6 @@ class LandingViewModel(
     fun configureSampling(environment: Environment, isQaUser: Boolean = false) {
         val config = SamplingConfig(environment = environment, isQaUser = isQaUser)
         configureSampling(config)
-    }
-
-    private fun getSampleRateForEnvironment(environment: Environment): String = when (environment) {
-        Environment.PRODUCTION -> "1%"
-        Environment.STAGING -> "20%"
-        Environment.QA -> "100%"
-        Environment.DEVELOPMENT -> "50%"
     }
 
     private fun applyFeatureFilter(component: UiComponent): UiComponent {
