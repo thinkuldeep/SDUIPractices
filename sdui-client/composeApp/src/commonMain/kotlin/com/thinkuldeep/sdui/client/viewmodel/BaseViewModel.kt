@@ -28,7 +28,7 @@ abstract class BaseViewModel(dispatcher: CoroutineDispatcher = Dispatchers.Defau
     }
 
     protected fun recordError(error: Throwable) {
-        val currentSpan = _span.value
+        val currentSpan = _span.value ?: SpanContextHolder.current()
         if (currentSpan != null) {
             TracingProvider.recordError(currentSpan, error)
         } else {
