@@ -16,8 +16,6 @@ data class Span(
     var status: SpanStatus = SpanStatus.UNSET,
     var attributes: Map<String, String> = emptyMap()
 ) {
-    val isSampled: Boolean get() = traceFlags == "01"
-
     fun toTraceparent(): String = "$TRACE_VERSION-$traceId-$spanId-$traceFlags"
     fun toTracestate(): String = traceState.ifEmpty { "" }
     fun isEnded(): Boolean = endTime != null
