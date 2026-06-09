@@ -27,12 +27,13 @@ class LandingViewModel(
 
     private fun load() {
         scope.launch {
+            println("🔥 Calling API...")
             try {
                 val root = repository.fetchLanding()
                 originalTree = root
                 _uiState.value = applyFeatureFilter(root)
             } catch (e: Exception) {
-                onError(e, span.value)
+                println("❌ ViewModel error: ${e.message}")
             }
         }
     }

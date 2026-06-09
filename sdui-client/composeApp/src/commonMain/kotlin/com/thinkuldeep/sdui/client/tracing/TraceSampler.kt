@@ -8,11 +8,9 @@ enum class Environment {
 
 data class SamplingConfig(
     val environment: Environment = Environment.QA,
-    val isQaUser: Boolean = false,
-    val isError: Boolean = false
+    val isQaUser: Boolean = false
 ) {
     fun shouldSample(): Boolean = when {
-        isError -> true
         isQaUser -> true
         environment == Environment.QA -> true
         environment == Environment.STAGING -> Random.nextDouble() < 0.2
@@ -34,13 +32,5 @@ data class SamplingConfig(
         fun shouldSample(): Boolean = instance.shouldSample()
 
         fun getTraceFlags(): String = instance.getTraceFlags()
-
-        fun markError() {
-            instance = instance.copy(isError = true)
-        }
-
-        fun clearError() {
-            instance = instance.copy(isError = false)
-        }
     }
 }
