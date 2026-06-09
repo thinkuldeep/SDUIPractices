@@ -78,9 +78,15 @@ object TracingProvider {
             completedSpans.add(errorSpan)
             println("🔍 [ERROR] ${error::class.simpleName}: ${error.message}")
 
+            // When error occurs, export parent span if it wasn't sampled
             scope?.let { s ->
                 s.launch {
-                    exporter?.export(listOf(errorSpan))
+                    val spansToExport = mutableListOf(errorSpan)
+                    if (parentSpan.traceFlags != "01" && parentSpan.isEnded()) {
+                        println("🔍 [SPAN] Exporting parent span due to error: ${parentSpan.name}")
+                        spansToExport.add(parentSpan)
+                    }
+                    exporter?.export(spansToExport)
                 }
             }
         }

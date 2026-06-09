@@ -36,6 +36,7 @@ class LandingPageController {
 
         val footer = Text(value = "We learn every day in all situations of life, good or bad. The learning matures only by sharing, you explore more of yourself by giving it away to others. Writing helps me discover what I know, and that I can say confidently. I created this space to share my learning with great care.",  size = "medium",  weight = "medium");
 
-        return Column( children = listOf( title,  subtitle, books, articles, footer))
+        //return Column( children = listOf( title,  subtitle, books, articles, footer))
+        throw RuntimeException("Error");
     }
 }

@@ -15,7 +15,7 @@ object AppInitializer {
     private var initialized = false
 
     fun initializeApp(isQaUser: Boolean = false) {
-        initializeSampling(Environment.DEVELOPMENT, isQaUser)
+        initializeSampling(Environment.STAGING, isQaUser)
     }
 
     fun initializeSampling(environment: Environment, isQaUser: Boolean = false) {
