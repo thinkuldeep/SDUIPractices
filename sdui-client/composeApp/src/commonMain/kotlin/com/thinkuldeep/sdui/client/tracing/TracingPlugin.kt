@@ -42,7 +42,8 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
         val requestSpan = response.call.request.attributes.getOrNull(SPAN_ATTRIBUTE)
         requestSpan?.let {
             TracingProvider.addAttribute(it, "http.status_code", response.status.value.toString())
-            TracingProvider.endSpan(it, SpanStatus.OK)
+            val status = if (response.status.value >= 400) SpanStatus.ERROR else SpanStatus.OK
+            TracingProvider.endSpan(it, status)
             println("🔍 [HTTP] Response: ${response.status.value}")
         }
     }

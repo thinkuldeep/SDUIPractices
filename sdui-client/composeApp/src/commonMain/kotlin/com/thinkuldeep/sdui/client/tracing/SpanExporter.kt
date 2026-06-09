@@ -66,15 +66,15 @@ class JaegerSpanExporter(
     }
 
     private suspend fun doExport(spans: List<Span>) {
-        // Filter to only sampled spans
-        val sampledSpans = spans.filter { it.traceFlags == "01" }
-        if (sampledSpans.isEmpty()) {
+        // Export sampled spans OR spans with errors (errors always exported)
+        val spansToExport = spans.filter { it.traceFlags == "01" || it.status == SpanStatus.ERROR }
+        if (spansToExport.isEmpty()) {
             println("🔍 [JAEGER] No sampled spans to export (${spans.size} total)")
             return
         }
 
         try {
-            val payload = buildJaegerPayload(sampledSpans)
+            val payload = buildJaegerPayload(spansToExport)
             println("📤 [JAEGER] Sending payload to ${config.endpoint}")
             println("📤 [JAEGER] Payload: ${payload}")
 
@@ -82,12 +82,12 @@ class JaegerSpanExporter(
                 contentType(ContentType.Application.Json)
                 setBody(payload)
             }
-            println("✅ [JAEGER] Exported ${sampledSpans.size}/${spans.size} sampled spans")
+            println("✅ [JAEGER] Exported ${spansToExport.size}/${spans.size} sampled spans")
         } catch (e: Exception) {
             println("❌ [JAEGER] Failed to export spans: ${e.message}")
             //e.printStackTrace()
             threadSafeExecute(bufferLock) {
-                spanBuffer.addAll(sampledSpans)
+                spanBuffer.addAll(spansToExport)
             }
         }
     }
