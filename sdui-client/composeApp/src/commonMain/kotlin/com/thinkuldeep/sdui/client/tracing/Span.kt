@@ -16,6 +16,8 @@ data class Span(
     var status: SpanStatus = SpanStatus.UNSET,
     var attributes: Map<String, String> = emptyMap()
 ) {
+    val isSampled: Boolean get() = traceFlags == "01"
+
     fun toTraceparent(): String = "$TRACE_VERSION-$traceId-$spanId-$traceFlags"
     fun toTracestate(): String = traceState.ifEmpty { "" }
     fun isEnded(): Boolean = endTime != null
@@ -37,7 +39,6 @@ data class Span(
             } else {
                 traceState
             }
-            // Use provided traceFlags, or get from sampler for new traces
             val flags = traceFlags ?: TraceSamplerHolder.getTraceFlags()
 
             return Span(
@@ -46,7 +47,8 @@ data class Span(
                 parentSpanId = parentSpanId,
                 name = name,
                 traceState = finalTraceState,
-                traceFlags = flags
+                traceFlags = flags,
+                startTime = currentTimeMillis()
             )
         }
     }
