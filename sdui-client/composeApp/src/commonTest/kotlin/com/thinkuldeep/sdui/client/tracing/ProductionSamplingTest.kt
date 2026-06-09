@@ -23,7 +23,7 @@ class ProductionSamplingTest {
             environment = Environment.PRODUCTION,
             isQaUser = false
         )
-        TraceSamplerHolder.setConfig(config)
+        SamplingConfig.setCurrent(config)
 
         var sampledCount = 0
         val totalRequests = 1000
@@ -53,7 +53,7 @@ class ProductionSamplingTest {
             environment = Environment.PRODUCTION,
             isQaUser = true
         )
-        TraceSamplerHolder.setConfig(config)
+        SamplingConfig.setCurrent(config)
 
         var sampledCount = 0
         val totalRequests = 100
@@ -79,7 +79,7 @@ class ProductionSamplingTest {
             environment = Environment.STAGING,
             isQaUser = false
         )
-        TraceSamplerHolder.setConfig(config)
+        SamplingConfig.setCurrent(config)
 
         var sampledCount = 0
         val totalRequests = 1000
@@ -107,7 +107,7 @@ class ProductionSamplingTest {
             environment = Environment.QA,
             isQaUser = false
         )
-        TraceSamplerHolder.setConfig(config)
+        SamplingConfig.setCurrent(config)
 
         var sampledCount = 0
         val totalRequests = 100
@@ -133,7 +133,7 @@ class ProductionSamplingTest {
             environment = Environment.PRODUCTION,
             isQaUser = false
         )
-        TraceSamplerHolder.setConfig(config)
+        SamplingConfig.setCurrent(config)
 
         val sampledSpans = mutableListOf<Span>()
         val nonSampledSpans = mutableListOf<Span>()
@@ -211,7 +211,7 @@ class ProductionSamplingTest {
         println("📊 Environment Switching Test:")
         for ((environment, expectedRate) in environments) {
             val config = SamplingConfig(environment = environment, isQaUser = false)
-            TraceSamplerHolder.setConfig(config)
+            SamplingConfig.setCurrent(config)
 
             var sampledCount = 0
             repeat(100) {
@@ -236,7 +236,7 @@ class ProductionSamplingTest {
             environment = Environment.PRODUCTION,
             isQaUser = false
         )
-        TraceSamplerHolder.setConfig(config)
+        SamplingConfig.setCurrent(config)
         println("✅ Configured for Production (1% sampling)")
 
         // 2. Simulate requests
@@ -263,7 +263,7 @@ class ProductionSamplingTest {
             environment = Environment.PRODUCTION,
             isQaUser = true
         )
-        TraceSamplerHolder.setConfig(qaConfig)
+        SamplingConfig.setCurrent(qaConfig)
         val qaSpans = mutableListOf<Span>()
         repeat(10) {
             qaSpans.add(Span.create())

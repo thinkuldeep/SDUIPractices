@@ -89,23 +89,23 @@ class TraceSamplerTest {
     }
 
     @Test
-    fun testTraceSamplerHolder() {
+    fun testSamplingConfigCurrent() {
         val config = SamplingConfig(environment = Environment.QA, isQaUser = true)
-        TraceSamplerHolder.setConfig(config)
+        SamplingConfig.setCurrent(config)
 
-        val retrievedConfig = TraceSamplerHolder.getConfig()
+        val retrievedConfig = SamplingConfig.current()
         assertEquals(Environment.QA, retrievedConfig.environment)
         assertTrue(retrievedConfig.isQaUser)
-        assertTrue(TraceSamplerHolder.shouldSample())
+        assertTrue(SamplingConfig.shouldSample())
     }
 
     @Test
-    fun testTraceSamplerHolderDefaultConfig() {
-        TraceSamplerHolder.setConfig(SamplingConfig()) // Reset to default
-        val config = TraceSamplerHolder.getConfig()
+    fun testSamplingConfigDefaultConfig() {
+        SamplingConfig.setCurrent(SamplingConfig()) // Reset to default
+        val config = SamplingConfig.current()
 
         assertEquals(Environment.QA, config.environment) // Default is QA
         assertFalse(config.isQaUser)
-        assertTrue(TraceSamplerHolder.shouldSample()) // QA environment always samples
+        assertTrue(SamplingConfig.shouldSample()) // QA environment always samples
     }
 }

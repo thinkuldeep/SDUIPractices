@@ -14,28 +14,28 @@ data class SamplingConfig(
     val isQaUser: Boolean = false
 ) {
     fun shouldSample(): Boolean = when {
-        isQaUser -> true // QA users always sampled
-        environment == Environment.QA -> true // QA environment always sampled
-        environment == Environment.STAGING -> Random.nextDouble() < 0.2 // 20% sampling
-        environment == Environment.PRODUCTION -> Random.nextDouble() < 0.01 // 1% sampling
-        else -> true // Development: always sample
+        isQaUser -> true
+        environment == Environment.QA -> true
+        environment == Environment.STAGING -> Random.nextDouble() < 0.2
+        environment == Environment.PRODUCTION -> Random.nextDouble() < 0.01
+        else -> true
     }
 
     fun getTraceFlags(): String = if (shouldSample()) "01" else "00"
-}
 
-object TraceSamplerHolder {
-    private var config: SamplingConfig = SamplingConfig()
+    companion object {
+        private var instance: SamplingConfig = SamplingConfig()
 
-    fun setConfig(newConfig: SamplingConfig) {
-        config = newConfig
+        fun current(): SamplingConfig = instance
+
+        fun setCurrent(config: SamplingConfig) {
+            instance = config
+        }
+
+        fun shouldSample(): Boolean = instance.shouldSample()
+
+        fun getTraceFlags(): String = instance.getTraceFlags()
     }
-
-    fun getConfig(): SamplingConfig = config
-
-    fun shouldSample(): Boolean = config.shouldSample()
-
-    fun getTraceFlags(): String = config.getTraceFlags()
 }
 
 class TraceSampler(private val config: SamplingConfig = SamplingConfig()) {

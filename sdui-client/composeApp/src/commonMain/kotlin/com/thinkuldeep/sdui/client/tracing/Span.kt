@@ -51,7 +51,7 @@ data class Span(
             } else {
                 traceState
             }
-            val flags = traceFlags ?: TraceSamplerHolder.getTraceFlags()
+            val flags = traceFlags ?: SamplingConfig.getTraceFlags()
 
             return Span(
                 traceId = traceId ?: generateTraceId(),
@@ -64,22 +64,6 @@ data class Span(
             )
         }
 
-        fun createContext(
-            traceId: String? = null,
-            spanId: String? = null,
-            parentSpanId: String? = null,
-            traceState: String = "",
-            traceFlags: String? = null
-        ): Span = create(
-            traceId = traceId,
-            spanId = spanId,
-            parentSpanId = parentSpanId,
-            name = "context",
-            traceState = traceState,
-            traceFlags = traceFlags
-        )
-
-        fun current(): Span? = SpanContextHolder.current()
     }
 }
 

@@ -12,7 +12,6 @@ import com.thinkuldeep.sdui.client.tracing.JaegerSpanExporter
 import com.thinkuldeep.sdui.client.tracing.SamplingConfig
 import com.thinkuldeep.sdui.client.tracing.Span
 import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
-import com.thinkuldeep.sdui.client.tracing.TraceSamplerHolder
 import com.thinkuldeep.sdui.client.tracing.TracingProvider
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -102,7 +101,7 @@ class LandingViewModel(
     }
 
     fun configureSampling(config: SamplingConfig) {
-        TraceSamplerHolder.setConfig(config)
+        SamplingConfig.setCurrent(config)
         println("🔍 [TRACE] Sampling configured - Environment: ${config.environment}, IsQaUser: ${config.isQaUser}, SampleRate: ${getSampleRateForEnvironment(config.environment)}")
 
         // Initialize tracing provider with Jaeger exporter
