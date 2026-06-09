@@ -2,6 +2,18 @@ package com.thinkuldeep.sdui.client.tracing
 
 import kotlinx.serialization.Serializable
 import com.thinkuldeep.sdui.client.PlatformConfig
+import com.thinkuldeep.sdui.client.threading.threadSafeExecute
+import kotlin.random.Random
+
+fun generateTraceId(): String {
+    return (0 until 16).map { Random.nextInt(256).toString(16).padStart(2, '0') }.joinToString("")
+}
+
+fun generateSpanId(): String {
+    return (0 until 8).map { Random.nextInt(256).toString(16).padStart(2, '0') }.joinToString("")
+}
+
+expect fun currentTimeMillis(): Long
 
 @Serializable
 data class Span(
@@ -16,6 +28,8 @@ data class Span(
     var status: SpanStatus = SpanStatus.UNSET,
     var attributes: Map<String, String> = emptyMap()
 ) {
+    val isSampled: Boolean get() = traceFlags == "01"
+
     fun toTraceparent(): String = "$TRACE_VERSION-$traceId-$spanId-$traceFlags"
     fun toTracestate(): String = traceState.ifEmpty { "" }
     fun isEnded(): Boolean = endTime != null
@@ -49,9 +63,48 @@ data class Span(
                 startTime = currentTimeMillis()
             )
         }
+
+        fun createContext(
+            traceId: String? = null,
+            spanId: String? = null,
+            parentSpanId: String? = null,
+            traceState: String = "",
+            traceFlags: String? = null
+        ): Span = create(
+            traceId = traceId,
+            spanId = spanId,
+            parentSpanId = parentSpanId,
+            name = "context",
+            traceState = traceState,
+            traceFlags = traceFlags
+        )
+
+        fun current(): Span? = SpanContextHolder.current()
     }
 }
 
 enum class SpanStatus {
     UNSET, OK, ERROR
 }
+
+object SpanContextHolder {
+    private var currentSpan: Span? = null
+    private val lock = Any()
+
+    fun set(span: Span?) {
+        threadSafeExecute(lock) {
+            currentSpan = span
+        }
+    }
+
+    fun current(): Span? = threadSafeExecute(lock) {
+        currentSpan
+    }
+
+    fun clear() {
+        threadSafeExecute(lock) {
+            currentSpan = null
+        }
+    }
+}
+
