@@ -58,32 +58,20 @@ object TracingProvider {
 
     fun recordError(parentSpan: Span, error: Throwable) {
         threadSafeExecute(lock) {
-            val errorSpan = Span.create(
-                traceId = parentSpan.traceId,
-                spanId = null,
-                parentSpanId = parentSpan.spanId,
-                name = "error",
-                traceState = parentSpan.traceState,
-                traceFlags = "01"
-            )
-            errorSpan.endTime = currentTimeMillis()
-            errorSpan.status = SpanStatus.ERROR
-
-            val attributes = mutableMapOf(
-                "error.type" to (error::class.simpleName ?: "Unknown"),
-                "error.message" to (error.message ?: "No message")
-            )
-            errorSpan.attributes = attributes
-
-            completedSpans.add(errorSpan)
             println("🔍 [ERROR] ${error::class.simpleName}: ${error.message}")
+
+            // Record error as attributes on parent span
+            val attributes = parentSpan.attributes.toMutableMap()
+            attributes["error.type"] = error::class.simpleName ?: "Unknown"
+            attributes["error.message"] = error.message ?: "No message"
+            parentSpan.attributes = attributes
+            parentSpan.status = SpanStatus.ERROR
 
             // Always export parent span when error occurs
             scope?.let { s ->
                 s.launch {
-                    val spansToExport = mutableListOf(errorSpan, parentSpan)
-                    println("🔍 [SPAN] Exporting parent span and error: ${parentSpan.name}")
-                    exporter?.export(spansToExport)
+                    println("🔍 [SPAN] Exporting span with error: ${parentSpan.name}")
+                    exporter?.export(listOf(parentSpan))
                 }
             }
         }
