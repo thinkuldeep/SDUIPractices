@@ -100,10 +100,8 @@ val shouldExport = span.traceFlags == "01" || span.status == SpanStatus.ERROR
 App Startup
     ↓
 AppInitializer.initializeApp()
-    ├─ Create root span (traceFlags="01")
-    ├─ Initialize Jaeger exporter
     ├─ Set SamplingConfig
-    └─ Store in SpanContextHolder
+    └─ Initialize Jaeger exporter
     
 HTTP Request
     ↓
@@ -134,7 +132,7 @@ recordError(span, exception)
 ### Environment-Based Sampling
 
 The initial root span is created with `traceFlags="01"` (always sampled). This ensures:
-- Root span is always visible in Jaeger
+- Root span is always visible in Jaeger..
 - All child spans inherit sampling decision
 - Error spans are ALWAYS exported (regardless of sampling)
 
