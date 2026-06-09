@@ -29,7 +29,7 @@ class ProductionSamplingTest {
         val totalRequests = 1000
 
         repeat(totalRequests) {
-            val context = TraceContext.create()
+            val context = Span.create()
             if (context.isSampled) {
                 sampledCount++
             }
@@ -59,7 +59,7 @@ class ProductionSamplingTest {
         val totalRequests = 100
 
         repeat(totalRequests) {
-            val context = TraceContext.create()
+            val context = Span.create()
             if (context.isSampled) {
                 sampledCount++
             }
@@ -85,7 +85,7 @@ class ProductionSamplingTest {
         val totalRequests = 1000
 
         repeat(totalRequests) {
-            val context = TraceContext.create()
+            val context = Span.create()
             if (context.isSampled) {
                 sampledCount++
             }
@@ -113,7 +113,7 @@ class ProductionSamplingTest {
         val totalRequests = 100
 
         repeat(totalRequests) {
-            val context = TraceContext.create()
+            val context = Span.create()
             if (context.isSampled) {
                 sampledCount++
             }
@@ -135,43 +135,43 @@ class ProductionSamplingTest {
         )
         TraceSamplerHolder.setConfig(config)
 
-        val sampledContexts = mutableListOf<TraceContext>()
-        val nonSampledContexts = mutableListOf<TraceContext>()
+        val sampledSpans = mutableListOf<Span>()
+        val nonSampledSpans = mutableListOf<Span>()
 
         repeat(1000) {
-            val context = TraceContext.create()
-            if (context.isSampled) {
-                sampledContexts.add(context)
+            val span = Span.create()
+            if (span.isSampled) {
+                sampledSpans.add(span)
             } else {
-                nonSampledContexts.add(context)
+                nonSampledSpans.add(span)
             }
         }
 
         println("📊 Traceparent Always Sent Test Results:")
-        println("   Sampled contexts: ${sampledContexts.size}")
-        println("   Non-sampled contexts: ${nonSampledContexts.size}")
+        println("   Sampled spans: ${sampledSpans.size}")
+        println("   Non-sampled spans: ${nonSampledSpans.size}")
 
-        // Verify sampled contexts have traceFlags = "01"
-        sampledContexts.forEach { context ->
-            assertEquals("01", context.traceFlags, "Sampled context should have traceFlags=01")
-            assertTrue(context.toTraceparent().endsWith("-01"), "Sampled traceparent should end with -01")
+        // Verify sampled spans have traceFlags = "01"
+        sampledSpans.forEach { span ->
+            assertEquals("01", span.traceFlags, "Sampled span should have traceFlags=01")
+            assertTrue(span.toTraceparent().endsWith("-01"), "Sampled traceparent should end with -01")
         }
 
-        // Verify non-sampled contexts have traceFlags = "00"
-        nonSampledContexts.forEach { context ->
-            assertEquals("00", context.traceFlags, "Non-sampled context should have traceFlags=00")
-            assertTrue(context.toTraceparent().endsWith("-00"), "Non-sampled traceparent should end with -00")
+        // Verify non-sampled spans have traceFlags = "00"
+        nonSampledSpans.forEach { span ->
+            assertEquals("00", span.traceFlags, "Non-sampled span should have traceFlags=00")
+            assertTrue(span.toTraceparent().endsWith("-00"), "Non-sampled traceparent should end with -00")
         }
 
-        // Verify all contexts have valid traceparent headers
-        (sampledContexts + nonSampledContexts).forEach { context ->
-            val traceparent = context.toTraceparent()
-            assertTrue(traceparent.isNotEmpty(), "Every context should have traceparent")
-            assertTrue(traceparent.contains(context.traceId), "Traceparent should contain traceId")
-            assertTrue(traceparent.contains(context.spanId), "Traceparent should contain spanId")
+        // Verify all spans have valid traceparent headers
+        (sampledSpans + nonSampledSpans).forEach { span ->
+            val traceparent = span.toTraceparent()
+            assertTrue(traceparent.isNotEmpty(), "Every span should have traceparent")
+            assertTrue(traceparent.contains(span.traceId), "Traceparent should contain traceId")
+            assertTrue(traceparent.contains(span.spanId), "Traceparent should contain spanId")
         }
 
-        assertTrue(nonSampledContexts.isNotEmpty(), "Should have some non-sampled contexts")
+        assertTrue(nonSampledSpans.isNotEmpty(), "Should have some non-sampled spans")
         println("✅ Even non-sampled requests send trace context")
     }
 
@@ -240,21 +240,21 @@ class ProductionSamplingTest {
         println("✅ Configured for Production (1% sampling)")
 
         // 2. Simulate requests
-        val requestTraces = mutableListOf<TraceContext>()
+        val requestSpans = mutableListOf<Span>()
         repeat(100) {
-            requestTraces.add(TraceContext.create())
+            requestSpans.add(Span.create())
         }
         println("✅ Generated 100 requests with trace context")
 
         // 3. Verify trace headers
-        val sampledTraces = requestTraces.filter { it.isSampled }
-        val nonSampledTraces = requestTraces.filter { !it.isSampled }
+        val sampledSpans = requestSpans.filter { it.isSampled }
+        val nonSampledSpans = requestSpans.filter { !it.isSampled }
 
-        println("✅ Trace distribution: ${sampledTraces.size} sampled, ${nonSampledTraces.size} non-sampled")
+        println("✅ Trace distribution: ${sampledSpans.size} sampled, ${nonSampledSpans.size} non-sampled")
 
         // 4. Verify all have traceparent
-        requestTraces.forEach { trace ->
-            assertTrue(trace.toTraceparent().isNotEmpty())
+        requestSpans.forEach { span ->
+            assertTrue(span.toTraceparent().isNotEmpty())
         }
         println("✅ All 100 requests have traceparent headers")
 
@@ -264,11 +264,11 @@ class ProductionSamplingTest {
             isQaUser = true
         )
         TraceSamplerHolder.setConfig(qaConfig)
-        val qaTraces = mutableListOf<TraceContext>()
+        val qaSpans = mutableListOf<Span>()
         repeat(10) {
-            qaTraces.add(TraceContext.create())
+            qaSpans.add(Span.create())
         }
-        println("✅ QA user requests: ${qaTraces.filter { it.isSampled }.size}/10 sampled (100%)")
+        println("✅ QA user requests: ${qaSpans.filter { it.isSampled }.size}/10 sampled (100%)")
 
         println("=" * 50)
         println("🎉 Production simulation complete!")

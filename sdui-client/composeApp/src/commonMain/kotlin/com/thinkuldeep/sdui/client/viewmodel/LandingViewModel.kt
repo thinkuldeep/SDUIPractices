@@ -10,8 +10,8 @@ import com.thinkuldeep.sdui.client.tracing.Environment
 import com.thinkuldeep.sdui.client.tracing.JaegerExporterConfig
 import com.thinkuldeep.sdui.client.tracing.JaegerSpanExporter
 import com.thinkuldeep.sdui.client.tracing.SamplingConfig
-import com.thinkuldeep.sdui.client.tracing.TraceContext
-import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
+import com.thinkuldeep.sdui.client.tracing.Span
+import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
 import com.thinkuldeep.sdui.client.tracing.TraceSamplerHolder
 import com.thinkuldeep.sdui.client.tracing.TracingProvider
 import kotlinx.coroutines.*
@@ -26,8 +26,8 @@ class LandingViewModel(
     private val _uiState = MutableStateFlow<UiComponent?>(null)
     val uiState: StateFlow<UiComponent?> = _uiState
 
-    private val _traceContext = MutableStateFlow<TraceContext?>(null)
-    val traceContext: StateFlow<TraceContext?> = _traceContext
+    private val _span = MutableStateFlow<Span?>(null)
+    val span: StateFlow<Span?> = _span
 
     private val featureIndexes = mutableMapOf<String, Int>()
     private val featureIndexLock = Any()
@@ -72,24 +72,24 @@ class LandingViewModel(
         }
     }
 
-    fun setTraceContext(traceparent: String, tracestate: String = "") {
-        val context = TraceContext(
+    fun setSpan(traceparent: String, tracestate: String = "") {
+        val span = Span(
             traceId = extractTraceId(traceparent),
             spanId = extractSpanId(traceparent),
             traceState = tracestate
         )
-        TraceContextHolder.set(context)
-        _traceContext.value = context
-        println("🔍 [TRACE] Context set - TraceID: ${context.traceId}")
+        SpanContextHolder.set(span)
+        _span.value = span
+        println("🔍 [TRACE] Span set - TraceID: ${span.traceId}")
     }
 
-    fun setTraceContext(context: TraceContext) {
-        TraceContextHolder.set(context)
-        _traceContext.value = context
-        println("🔍 [TRACE] Context set - TraceID: ${context.traceId}")
+    fun setSpan(span: Span) {
+        SpanContextHolder.set(span)
+        _span.value = span
+        println("🔍 [TRACE] Span set - TraceID: ${span.traceId}")
     }
 
-    fun getCurrentTraceContext(): TraceContext? = _traceContext.value
+    fun getCurrentSpan(): Span? = _span.value
 
     private fun extractTraceId(traceparent: String): String {
         val parts = traceparent.split("-")
@@ -114,11 +114,11 @@ class LandingViewModel(
         val exporter = JaegerSpanExporter(jaegerConfig, HttpClientFactory.exportClient, scope)
         TracingProvider.initialize(exporter, scope)
 
-        // Initialize trace and load after sampling is configured
-        if (_traceContext.value == null) {
-            val context = TraceContext.create()
-            TraceContextHolder.set(context)
-            _traceContext.value = context
+        // Initialize span and load after sampling is configured
+        if (_span.value == null) {
+            val newSpan = Span.create()
+            SpanContextHolder.set(newSpan)
+            _span.value = newSpan
             load()
         }
     }

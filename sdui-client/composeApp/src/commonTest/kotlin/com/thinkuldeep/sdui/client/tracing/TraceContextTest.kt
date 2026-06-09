@@ -5,59 +5,59 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
-class TraceContextTest {
+class SpanTest {
     @Test
-    fun testTraceContextCreation() {
-        val context = TraceContext.create()
-        assertNotNull(context)
-        assertEquals(32, context.traceId.length)
-        assertEquals(16, context.spanId.length)
-        assertEquals("01", context.traceFlags)
+    fun testSpanCreation() {
+        val span = Span.create()
+        assertNotNull(span)
+        assertEquals(32, span.traceId.length)
+        assertEquals(16, span.spanId.length)
+        assertEquals("01", span.traceFlags)
     }
 
     @Test
-    fun testTraceContextWithCustomValues() {
+    fun testSpanWithCustomValues() {
         val traceId = "4bf92f3577b34da6a3ce929d0e0e4736"
         val spanId = "00f067aa0ba902b7"
-        val context = TraceContext.create(
+        val span = Span.create(
             traceId = traceId,
             spanId = spanId
         )
-        assertEquals(traceId, context.traceId)
-        assertEquals(spanId, context.spanId)
+        assertEquals(traceId, span.traceId)
+        assertEquals(spanId, span.spanId)
     }
 
     @Test
     fun testTraceparentFormatting() {
-        val context = TraceContext.create(
+        val span = Span.create(
             traceId = "4bf92f3577b34da6a3ce929d0e0e4736",
             spanId = "00f067aa0ba902b7"
         )
-        val traceparent = context.toTraceparent()
+        val traceparent = span.toTraceparent()
         assertEquals("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", traceparent)
     }
 
     @Test
     fun testTraceStateFormatting() {
-        val context = TraceContext(
+        val span = Span(
             traceId = "4bf92f3577b34da6a3ce929d0e0e4736",
             spanId = "00f067aa0ba902b7",
             traceState = "vendor=data"
         )
-        assertEquals("vendor=data", context.toTracestate())
+        assertEquals("vendor=data", span.toTracestate())
     }
 
     @Test
-    fun testTraceContextHolder() {
-        TraceContextHolder.clear()
-        assertNull(TraceContextHolder.current())
+    fun testSpanContextHolder() {
+        SpanContextHolder.clear()
+        assertNull(SpanContextHolder.current())
 
-        val context = TraceContext.create()
-        TraceContextHolder.set(context)
-        assertEquals(context, TraceContextHolder.current())
+        val span = Span.create()
+        SpanContextHolder.set(span)
+        assertEquals(span, SpanContextHolder.current())
 
-        TraceContextHolder.clear()
-        assertNull(TraceContextHolder.current())
+        SpanContextHolder.clear()
+        assertNull(SpanContextHolder.current())
     }
 
     @Test

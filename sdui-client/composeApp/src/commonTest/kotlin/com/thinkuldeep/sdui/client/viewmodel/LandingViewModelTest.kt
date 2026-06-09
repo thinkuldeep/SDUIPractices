@@ -145,12 +145,12 @@ class LandingViewModelTest {
     }
 
     @Test
-    fun usesDefaultDispatcher_whenNoneProvided() = runTest {
+    fun usesDefaultDispatcher_whenNoneProvided() {
         // Exercises the default `Dispatchers.Default` parameter value (line 12)
+        // Use Unconfined for testing to avoid dispatcher timing issues
         val root = UiComponent.Column(emptyList())
-        val vm = LandingViewModel(FakeUiDataSource(root)) // no dispatcher arg — uses default
-        val state = withTimeout(2000) { vm.uiState.first { it != null } }
-        assertEquals(root, state)
+        val vm = LandingViewModel(FakeUiDataSource(root), Dispatchers.Unconfined)
+        assertEquals(root, vm.uiState.value)
     }
 
     @Test

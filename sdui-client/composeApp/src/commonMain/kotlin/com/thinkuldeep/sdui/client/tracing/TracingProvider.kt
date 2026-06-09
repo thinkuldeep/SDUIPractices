@@ -20,15 +20,15 @@ object TracingProvider {
         }
     }
 
-    fun startSpan(name: String, traceContext: TraceContext): Span {
+    fun startSpan(name: String, parentSpan: Span): Span {
         return threadSafeExecute(lock) {
             val span = Span.create(
-                traceId = traceContext.traceId,
+                traceId = parentSpan.traceId,
                 spanId = null,
                 parentSpanId = currentSpan?.spanId,
                 name = name,
-                traceState = traceContext.traceState ?: "",
-                traceFlags = traceContext.traceFlags
+                traceState = parentSpan.traceState ?: "",
+                traceFlags = parentSpan.traceFlags
             )
             spanStack.add(span)
             currentSpan = span

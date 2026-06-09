@@ -3,8 +3,8 @@ package com.thinkuldeep.sdui.client.data
 import com.thinkuldeep.sdui.client.PlatformConfig
 import com.thinkuldeep.sdui.client.model.UiComponent
 import com.thinkuldeep.sdui.client.network.HttpClientFactory
-import com.thinkuldeep.sdui.client.tracing.TraceContext
-import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
+import com.thinkuldeep.sdui.client.tracing.Span
+import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -12,12 +12,12 @@ import io.ktor.client.request.get
 class UiRepository(private val client: HttpClient = HttpClientFactory.client) : UiDataSource {
     override suspend fun fetchLanding(): UiComponent {
         try {
-            val currentContext = TraceContextHolder.current()
-            val traceContext = currentContext ?: TraceContext.create()
-            TraceContextHolder.set(traceContext)
+            val currentSpan = SpanContextHolder.current()
+            val span = currentSpan ?: Span.create()
+            SpanContextHolder.set(span)
 
             println("🔥 fetchLanding - ${PlatformConfig.baseUrl}/api/ui/landing")
-            println("🔍 [TRACE] Traceparent: ${traceContext.toTraceparent()}")
+            println("🔍 [TRACE] Traceparent: ${span.toTraceparent()}")
 
             return client.get("${PlatformConfig.baseUrl}/api/ui/landing").body()
         } catch (e: Exception) {
@@ -26,23 +26,23 @@ class UiRepository(private val client: HttpClient = HttpClientFactory.client) : 
         }
     }
 
-    fun setTraceContext(context: TraceContext) {
-        TraceContextHolder.set(context)
+    fun setSpan(span: Span) {
+        SpanContextHolder.set(span)
     }
 
-    fun setTraceContext(traceparent: String, tracestate: String = "") {
-        val context = TraceContext(
+    fun setSpan(traceparent: String, tracestate: String = "") {
+        val span = Span(
             traceId = extractTraceId(traceparent),
             spanId = extractSpanId(traceparent),
             traceState = tracestate
         )
-        TraceContextHolder.set(context)
+        SpanContextHolder.set(span)
     }
 
-    fun getCurrentTraceContext(): TraceContext? = TraceContextHolder.current()
+    fun getCurrentSpan(): Span? = SpanContextHolder.current()
 
-    fun clearTraceContext() {
-        TraceContextHolder.clear()
+    fun clearSpan() {
+        SpanContextHolder.clear()
     }
 
     private fun extractTraceId(traceparent: String): String {

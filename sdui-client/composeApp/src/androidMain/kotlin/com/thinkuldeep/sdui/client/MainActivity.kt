@@ -15,8 +15,8 @@ import com.thinkuldeep.sdui.client.renderer.Render
 import com.thinkuldeep.sdui.client.renderer.RenderWithRefresh
 import com.thinkuldeep.sdui.client.tracing.Environment
 import com.thinkuldeep.sdui.client.tracing.OpenTelemetryInit
-import com.thinkuldeep.sdui.client.tracing.TraceContext
-import com.thinkuldeep.sdui.client.tracing.TraceContextHolder
+import com.thinkuldeep.sdui.client.tracing.Span
+import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
 import com.thinkuldeep.sdui.client.viewmodel.LandingViewModel
 
 class MainActivity : ComponentActivity() {
@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val state = viewModel.uiState.collectAsState()
-            val traceContext = viewModel.traceContext.collectAsState()
+            val span = viewModel.span.collectAsState()
 
             Scaffold { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
@@ -48,29 +48,29 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Log current trace
-            traceContext.value?.let { trace ->
-                val logMsg = "🔍 [TRACE] Current - TraceID: ${trace.traceId}, " +
-                        "Sampled: ${trace.isSampled}, " +
-                        "Flags: ${trace.traceFlags}"
+            // Log current span
+            span.value?.let { s ->
+                val logMsg = "🔍 [TRACE] Current - TraceID: ${s.traceId}, " +
+                        "Sampled: ${s.isSampled}, " +
+                        "Flags: ${s.traceFlags}"
                 println(logMsg)
             }
         }
     }
 
     private fun refreshUI(viewModel: LandingViewModel) {
-        // Generate new trace context
-        val newContext = TraceContext.create()
-        TraceContextHolder.set(newContext)
-        viewModel.setTraceContext(newContext)
+        // Generate new span context
+        val newSpan = Span.create()
+        SpanContextHolder.set(newSpan)
+        viewModel.setSpan(newSpan)
 
-        println("🔄 Refreshing UI with new trace")
-        println("🔍 [TRACE] New TraceID: ${newContext.traceId}")
-        println("🔍 [TRACE] New SpanID: ${newContext.spanId}")
-        println("🔍 [TRACE] Sampled: ${newContext.isSampled}")
-        println("🔍 [TRACE] Traceparent: ${newContext.toTraceparent()}")
+        println("🔄 Refreshing UI with new span")
+        println("🔍 [TRACE] New TraceID: ${newSpan.traceId}")
+        println("🔍 [TRACE] New SpanID: ${newSpan.spanId}")
+        println("🔍 [TRACE] Sampled: ${newSpan.isSampled}")
+        println("🔍 [TRACE] Traceparent: ${newSpan.toTraceparent()}")
 
-        // Reload the UI (trigger API call with new trace)
+        // Reload the UI (trigger API call with new span)
         viewModel.reload()
     }
 }
