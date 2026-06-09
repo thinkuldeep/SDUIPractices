@@ -52,4 +52,13 @@ abstract class BaseViewModel(dispatcher: CoroutineDispatcher = Dispatchers.Defau
     }
 
     protected open fun onSamplingConfigured() {}
+
+    protected fun recordError(error: Throwable) {
+        val currentSpan = _span.value
+        if (currentSpan != null) {
+            TracingProvider.recordError(currentSpan, error)
+        } else {
+            println("❌ Error occurred (no span): ${error.message}")
+        }
+    }
 }
