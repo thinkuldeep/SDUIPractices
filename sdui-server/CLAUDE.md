@@ -11,12 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Run the server (default port 8080)
 ./gradlew bootRun
 
-# Run with OpenTelemetry instrumentation (exports traces to http://localhost:4318/v1/traces)
-# 1. First, download the agent JAR:
-java -cp "build/libs/*" -Dotel.exporter.otlp.endpoint=http://localhost:4318 -javaagent:~/.m2/repository/io/opentelemetry/javaagent/opentelemetry-javaagent/2.2.0/opentelemetry-javaagent-2.2.0.jar -Dspring.devtools.restart.enabled=false -Dfile.encoding=UTF-8 org.springframework.boot.loader.launch.JarLauncher
-
-# Or set environment variables and use Gradle:
-# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 ./gradlew bootRun
+# Run with OpenTelemetry agent for distributed tracing (requires Jaeger on localhost:4318)
+./run-with-otel.sh
 
 # Run all tests + generate JaCoCo coverage report
 ./gradlew test
@@ -65,18 +61,40 @@ JaCoCo runs automatically after `./gradlew test` and produces HTML + XML reports
 
 ### OpenTelemetry & Distributed Tracing
 
-The server exports traces to Jaeger via the OTLP (OpenTelemetry Protocol) HTTP endpoint at `http://localhost:4318/v1/traces`. 
+The server exports traces to Jaeger via the OTLP (OpenTelemetry Protocol) HTTP endpoint. 
 
-**Configuration:** `OtelConfig.kt` defines a parent-based sampler with 1% base sampling. The exporter is configured via environment variables in `application.properties`:
-- `otel.exporter.otlp.endpoint=http://localhost:4318`
-- `otel.traces.exporter=otlp`
-- `otel.service.name=sdui-server`
+**Configuration:** 
+- **Sampler:** Parent-based with 1% base sampling (respects parent trace sampling decision)
+- **Error handling:** Tail-based error detection exports ALL error traces regardless of sampling
+- **OTLP Endpoint:** Configured in `application.properties` (default: `http://localhost:4318/v1/traces`)
+- **Service name:** `sdui-server`
 
-**Automatic Instrumentation:** To automatically create spans for HTTP requests and other operations, run the server with the OpenTelemetry Java agent:
+**Running with Distributed Tracing:**
 
 ```bash
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-./gradlew bootRun -Dorg.springframework.boot.devtools.restart.trigger-file=.springBoot
+# 1. Start Jaeger (if not already running)
+docker run -d --name jaeger \
+  -p 6831:6831/udp -p 16686:16686 -p 4317:4317 -p 4318:4318 \
+  jaegertracing/all-in-one:latest
+
+# 2. Build the server
+./gradlew build
+
+# 3. Run with OpenTelemetry agent
+./run-with-otel.sh
 ```
 
-Or manually download and use the agent JAR. Without the agent, only trace context propagation works (trace IDs flow through requests but no spans are created on the server).
+The `run-with-otel.sh` script:
+- Auto-downloads OpenTelemetry Java agent (2.2.0)
+- Finds the correct executable JAR
+- Runs with agent for automatic HTTP span instrumentation
+- Exports traces to Jaeger at `http://localhost:4318`
+
+**Trace Features:**
+- ✅ **Automatic HTTP instrumentation** — all requests create spans
+- ✅ **Error override** — errors are exported even if parent sampled=00
+- ✅ **Trace context propagation** — mobile client → server traces linked
+- ✅ **Custom attributes** — slow requests, error flags, mobile sampling decision logged
+- ✅ **Exception recording** — exceptions automatically added to spans
+
+**View traces:** Open http://localhost:16686 after running server with agent.
