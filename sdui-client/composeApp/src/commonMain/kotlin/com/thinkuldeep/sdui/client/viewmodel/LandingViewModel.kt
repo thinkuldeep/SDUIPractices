@@ -4,6 +4,9 @@ import com.thinkuldeep.sdui.client.data.UiDataSource
 import com.thinkuldeep.sdui.client.data.UiRepository
 import com.thinkuldeep.sdui.client.model.UiComponent
 import com.thinkuldeep.sdui.client.threading.threadSafeExecute
+import com.thinkuldeep.sdui.client.tracing.Span
+import com.thinkuldeep.sdui.client.tracing.SpanContextHolder
+import com.thinkuldeep.sdui.client.tracing.TracingProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +34,7 @@ class LandingViewModel(
                 val root = repository.fetchLanding()
                 originalTree = root
                 _uiState.value = applyFeatureFilter(root)
+                SpanContextHolder.current()?.let { TracingProvider.endSpan(it) }
             } catch (e: Exception) {
                 recordError(e)
             }

@@ -32,7 +32,7 @@ object TracingProvider {
             )
             spanStack.add(span)
             currentSpan = span
-            println("🔍 [SPAN] Started: ${span.name} (${span.spanId})")
+            println("🔍 [SPAN] Started: ${span.name} (${span.traceId}-${span.spanId})")
             span
         }
     }
@@ -50,7 +50,7 @@ object TracingProvider {
                 currentSpan = null
             }
             val duration = span.duration() ?: 0
-            println("🔍 [SPAN] Ended: ${span.name} (${span.spanId}) - ${duration}ms - Status: $status")
+            println("🔍 [SPAN] Ended: ${span.name} (${span.traceId}-${span.spanId}) - ${duration}ms - Status: $status")
 
             exportIfSampled(span)
         }

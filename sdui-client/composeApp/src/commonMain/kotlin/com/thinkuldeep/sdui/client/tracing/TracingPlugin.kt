@@ -1,9 +1,7 @@
 package com.thinkuldeep.sdui.client.tracing
 
 import io.ktor.client.plugins.api.createClientPlugin
-import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.util.AttributeKey
-import com.thinkuldeep.sdui.client.PlatformConfig
 
 private val SPAN_CONTEXT_ATTRIBUTE = AttributeKey<Span>("Span")
 private val SPAN_ATTRIBUTE = AttributeKey<Span>("Span")
@@ -19,7 +17,7 @@ val TracingPlugin = createClientPlugin("TracingPlugin") {
 
         // Create a span for this HTTP request
         val requestMethod = request.method.value
-        val spanName = "$requestMethod $requestUrl"
+        val spanName = "KMP-BFF Calling"
 
         val requestSpan = TracingProvider.startSpan(spanName, span)
         // Add request attributes
